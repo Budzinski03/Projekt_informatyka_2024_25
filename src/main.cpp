@@ -8,7 +8,7 @@ public:
     Gracz();
     void steruj(float);
     void rysuj(sf::RenderWindow &);
-    sf::Vector2f getPosition() const;
+    sf::Vector2f pobierzPozycje() const;
 
 private:
     sf::RectangleShape ksztalt;
@@ -22,7 +22,7 @@ Gracz::Gracz() : predkosc(200.f)
     ksztalt.setPosition(375, 550);
 }
 
-//obsługa wejścia
+// obsługa wejścia
 void Gracz::steruj(float deltaTime)
 {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
@@ -46,7 +46,7 @@ void Gracz::rysuj(sf::RenderWindow &window)
     window.draw(ksztalt);
 }
 
-sf::Vector2f Gracz::getPosition() const
+sf::Vector2f Gracz::pobierzPozycje() const
 {
     return ksztalt.getPosition();
 }
@@ -55,9 +55,11 @@ class Wrog
 {
 public:
     Wrog(float x, float y);
-    void ruszaj(float deltaTime);
+    //void ruszaj(float deltaTime);
     void rysuj(sf::RenderWindow &window);
-    sf::Vector2f getPosition();
+    sf::Vector2f pobierzPozycje() const;
+    void ustawPozycje(float x, float y);
+    void przesun(float dx, float dy);
 
 private:
     sf::RectangleShape ksztalt;
@@ -71,20 +73,30 @@ Wrog::Wrog(float x, float y) : predkosc(50.f)
     ksztalt.setPosition(x, y);
 }
 
-//ruch wrogów
-void Wrog::ruszaj(float deltaTime)
-{
-    ksztalt.move(0, predkosc * deltaTime);
-}
+// // ruch wrogów
+// void Wrog::ruszaj(float deltaTime)
+// {
+//     ksztalt.move(0, predkosc * deltaTime);
+// }
 
 void Wrog::rysuj(sf::RenderWindow &window)
 {
     window.draw(ksztalt);
 }
 
-sf::Vector2f Wrog::getPosition()
+sf::Vector2f Wrog::pobierzPozycje() const
 {
     return ksztalt.getPosition();
+}
+
+void Wrog::ustawPozycje(float x, float y)
+{
+    ksztalt.setPosition(x, y);
+}
+
+void Wrog::przesun(float dx, float dy)
+{
+    ksztalt.move(dx, dy);
 }
 
 class Pocisk
@@ -107,7 +119,7 @@ Pocisk::Pocisk(float x, float y) : predkosc(-300.f)
     ksztalt.setPosition(x, y);
 }
 
-//ruch pocisków
+// ruch pocisków
 void Pocisk::ruszaj(float deltaTime)
 {
     ksztalt.move(0, predkosc * deltaTime);
@@ -131,13 +143,32 @@ int main()
     std::vector<Wrog> wrogowie;
     std::vector<Pocisk> pociski;
 
-    // Dodanie kilku przeciwnikow
-    wrogowie.emplace_back(100, 50);
-    wrogowie.emplace_back(200, 50);
-    wrogowie.emplace_back(300, 50);
+    // Dodanie przeciwnikow
+    int kolumny = 10;
+    int wiersze = 4;
+    float odstepK = 60.f;
+    float odstepW = 40.f;
+
+    // kierunek i szybkość ruchu przeciwników
+    bool ruchWPrawo = true;     // czy grupa porusza sie w prawo
+    float predkoscRuchu = 20.f; // predkosc ruchu w poziomie
+    float odstepPoziomy = 10.f; // odleglosc ruchu w dol
+
+    for (int rzad = 0; rzad < wiersze; ++rzad)
+    {
+        for (int kolumna = 0; kolumna < kolumny; ++kolumna)
+        {
+            float x = kolumna * odstepK + 20; // odtsep miedzy kolumnami
+            float y = rzad * odstepW + 20;    // odstep miedzy rzedami
+            wrogowie.emplace_back(x, y);
+        }
+    }
 
     // czas do obliczania płynności ruchu
     sf::Clock clock;
+
+    float czasOdOstatniegoStrzalu = 0.f;
+    float minimalnyCzasStrzalu = 0.2f;
 
     // pętla gry
     while (window.isOpen())
@@ -150,16 +181,56 @@ int main()
                 window.close();
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
                 window.close();
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
-                pociski.emplace_back(gracz.getPosition().x + 22.5f, gracz.getPosition().y);
+
+            // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
+            {
+                pociski.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y);
+                czasOdOstatniegoStrzalu = 0.0f;
+            }
         }
         // aktualizacja stanu gry
         sf::Time deltaTime = clock.restart();
         gracz.steruj(deltaTime.asSeconds());
 
+        czasOdOstatniegoStrzalu += deltaTime.asSeconds();
+
+
+        
+        bool dotknietoKrawedzi = false;
         for (auto &wrog : wrogowie)
         {
-            wrog.ruszaj(deltaTime.asSeconds());
+            // ruch w lewo lub w prawo
+            if (ruchWPrawo)
+            {
+                wrog.przesun(predkoscRuchu * deltaTime.asSeconds(), 0);
+            }
+            else
+            {
+                wrog.przesun(-predkoscRuchu * deltaTime.asSeconds(), 0);
+            }
+
+            // sprawdzenie czy wrog dotknal krawedzi ekranu
+            if (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 800)
+            {
+                dotknietoKrawedzi = true; // zmiana kierunku
+            }
+        }
+
+        // jesli dotykają krawędzi to zmiana kierunku
+        if (dotknietoKrawedzi)
+        {
+            ruchWPrawo = !ruchWPrawo; // zmiana kierunku
+            for (auto &wrog : wrogowie)
+            {
+                wrog.przesun(0, odstepPoziomy); // przesun wrogow w dol
+            }
+            dotknietoKrawedzi = false; 
+        }
+
+        for (const auto &wrog : wrogowie)
+        {
+            std::cout << "Wrog: (" << wrog.pobierzPozycje().x << ", " << wrog.pobierzPozycje().y << ")\n";
         }
 
         for (auto it = pociski.begin(); it != pociski.end();)
@@ -184,7 +255,7 @@ int main()
 
             for (auto pociskIt = pociski.begin(); pociskIt != pociski.end();)
             {
-                if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->getPosition(), sf::Vector2f(40, 20))))
+                if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzPozycje(), sf::Vector2f(40, 20))))
                 {
                     // Jeśli kolizja, usuń pocisk i oznacz przeciwnika do usunięcia
                     pociskIt = pociski.erase(pociskIt);
