@@ -55,7 +55,6 @@ class Wrog
 {
 public:
     Wrog(float x, float y);
-    //void ruszaj(float deltaTime);
     void rysuj(sf::RenderWindow &window);
     sf::Vector2f pobierzPozycje() const;
     void ustawPozycje(float x, float y);
@@ -72,12 +71,6 @@ Wrog::Wrog(float x, float y) : predkosc(50.f)
     ksztalt.setFillColor(sf::Color::Red);
     ksztalt.setPosition(x, y);
 }
-
-// // ruch wrogów
-// void Wrog::ruszaj(float deltaTime)
-// {
-//     ksztalt.move(0, predkosc * deltaTime);
-// }
 
 void Wrog::rysuj(sf::RenderWindow &window)
 {
@@ -135,13 +128,59 @@ sf::FloatRect Pocisk::pobierzObszar() const
     return ksztalt.getGlobalBounds();
 }
 
+class Punkty
+{
+    private:
+    int punkty;
+    sf::Text tekstPunkty;
+    public:
+    Punkty();
+    void dodaj(int punkty);
+    void rysuj(sf::RenderWindow& window, const sf::Font& czcionka);
+};
+
+Punkty::Punkty() : punkty(0)
+{
+    //inicjalizacja tekstu
+    tekstPunkty.setCharacterSize(30);
+    tekstPunkty.setFillColor(sf::Color::Blue);
+}
+
+void Punkty::dodaj(int nowyPunkt)
+{
+    punkty += nowyPunkt;
+}
+
+void Punkty::rysuj(sf::RenderWindow& window, const sf::Font& czcionka)
+{
+    tekstPunkty.setFont(czcionka);
+    tekstPunkty.setPosition(600,20);
+    tekstPunkty.setString("Punkty: " + std::to_string(punkty));
+    window.draw(tekstPunkty);
+}
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Space invaders");
 
+    bool przegrana = false;
+    sf::Font czcionka;
+        if (!czcionka.loadFromFile("Chunk Five Print.otf"))
+        {
+            std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
+            return -1;
+        }
+        sf::Text tekstPrzegrana;
+        tekstPrzegrana.setFont(czcionka);
+        tekstPrzegrana.setString("Przegrales! Wcisnij ESC, aby opuscic gre.");
+        tekstPrzegrana.setCharacterSize(30);
+        tekstPrzegrana.setFillColor(sf::Color::Red);
+        tekstPrzegrana.setPosition(100, 250);
+
     Gracz gracz;
     std::vector<Wrog> wrogowie;
     std::vector<Pocisk> pociski;
+    Punkty punkty;
 
     // Dodanie przeciwnikow
     int kolumny = 10;
@@ -151,14 +190,13 @@ int main()
 
     // kierunek i szybkość ruchu przeciwników
     bool ruchWPrawo = true;     // czy grupa porusza sie w prawo
-    float predkoscRuchu = 20.f; // predkosc ruchu w poziomie
-    float odstepPoziomy = 10.f; // odleglosc ruchu w dol
+    float predkoscRuchu = 50.f; // predkosc ruchu w poziomie
 
     for (int rzad = 0; rzad < wiersze; ++rzad)
     {
         for (int kolumna = 0; kolumna < kolumny; ++kolumna)
         {
-            float x = kolumna * odstepK + 20; // odtsep miedzy kolumnami
+            float x = kolumna * odstepK + 20; // odstep miedzy kolumnami
             float y = rzad * odstepW + 20;    // odstep miedzy rzedami
             wrogowie.emplace_back(x, y);
         }
@@ -167,6 +205,7 @@ int main()
     // czas do obliczania płynności ruchu
     sf::Clock clock;
 
+    //do ograniczenie czasu miedzy kolejnymi strzalami
     float czasOdOstatniegoStrzalu = 0.f;
     float minimalnyCzasStrzalu = 0.2f;
 
@@ -195,12 +234,10 @@ int main()
 
         czasOdOstatniegoStrzalu += deltaTime.asSeconds();
 
-
-        
         bool dotknietoKrawedzi = false;
         for (auto &wrog : wrogowie)
         {
-            // ruch w lewo lub w prawo
+            //ruch w poziomie
             if (ruchWPrawo)
             {
                 wrog.przesun(predkoscRuchu * deltaTime.asSeconds(), 0);
@@ -211,9 +248,17 @@ int main()
             }
 
             // sprawdzenie czy wrog dotknal krawedzi ekranu
-            if (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 800)
+            if (!dotknietoKrawedzi && (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 800))
             {
                 dotknietoKrawedzi = true; // zmiana kierunku
+            }
+
+            //std::cout<<"Pozycja wroga Y: "<<wrog.pobierzPozycje().y<<std::endl;
+
+            // sprawdzenie czy ktorys wrog dotarl do dolnej krawedzi
+            if (wrog.pobierzPozycje().y + 20 >= 600)
+            {
+                przegrana = true;
             }
         }
 
@@ -223,14 +268,31 @@ int main()
             ruchWPrawo = !ruchWPrawo; // zmiana kierunku
             for (auto &wrog : wrogowie)
             {
-                wrog.przesun(0, odstepPoziomy); // przesun wrogow w dol
+                wrog.przesun(0, odstepW); // przesun wrogow w dol
             }
-            dotknietoKrawedzi = false; 
+            //dotknietoKrawedzi = false;
         }
 
-        for (const auto &wrog : wrogowie)
-        {
-            std::cout << "Wrog: (" << wrog.pobierzPozycje().x << ", " << wrog.pobierzPozycje().y << ")\n";
+
+        //komunikat o przegranej
+        if (przegrana) {
+            window.clear();
+            window.draw(tekstPrzegrana);
+            window.display();
+
+            while(true)
+            {
+                sf::Event event;
+                while (window.pollEvent(event))
+                {
+                    if (event.type == sf::Event::Closed || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                    {
+                        window.close();
+                        break;
+                    }
+                }
+                if (!window.isOpen()) break;
+            }
         }
 
         for (auto it = pociski.begin(); it != pociski.end();)
@@ -272,6 +334,7 @@ int main()
             if (wrogZniszczony)
             {
                 wrogIt = wrogowie.erase(wrogIt);
+                punkty.dodaj(10);
             }
             else
             {
@@ -292,6 +355,7 @@ int main()
         {
             pocisk.rysuj(window);
         }
+        punkty.rysuj(window, czcionka);
 
         window.display();
     }
