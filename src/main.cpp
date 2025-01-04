@@ -197,7 +197,7 @@ int main()
         for (int kolumna = 0; kolumna < kolumny; ++kolumna)
         {
             float x = kolumna * odstepK + 20; // odstep miedzy kolumnami
-            float y = rzad * odstepW + 20;    // odstep miedzy rzedami
+            float y = rzad * odstepW + 80;    // odstep miedzy rzedami
             wrogowie.emplace_back(x, y);
         }
     }
@@ -207,7 +207,10 @@ int main()
 
     //do ograniczenie czasu miedzy kolejnymi strzalami
     float czasOdOstatniegoStrzalu = 0.f;
-    float minimalnyCzasStrzalu = 0.2f;
+    float minimalnyCzasStrzalu = 0.3f;
+
+    //aby naprawić blad zwiazany z wielokrotnym dotykaniem krawedzi
+    bool dotknietoKrawedziWczesniej = false;   
 
     // pętla gry
     while (window.isOpen())
@@ -263,14 +266,18 @@ int main()
         }
 
         // jesli dotykają krawędzi to zmiana kierunku
-        if (dotknietoKrawedzi)
+        if (dotknietoKrawedzi && !dotknietoKrawedziWczesniej)
         {
             ruchWPrawo = !ruchWPrawo; // zmiana kierunku
             for (auto &wrog : wrogowie)
             {
                 wrog.przesun(0, odstepW); // przesun wrogow w dol
             }
-            //dotknietoKrawedzi = false;
+            dotknietoKrawedziWczesniej = true;
+        }
+        else if (!dotknietoKrawedzi)
+        {
+            dotknietoKrawedziWczesniej = false;
         }
 
 
