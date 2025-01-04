@@ -2,6 +2,71 @@
 #include <SFML\Graphics.hpp>
 #include <vector>
 
+class Menu
+{
+public:
+    Menu(float, float,const sf::Font &);
+    void rysuj(sf::RenderWindow &window);
+    void przesunWGore();
+    void przesunWDol();
+    int pobierzWybranaOpcje() const;
+
+private:
+    int wybranaOpcja;
+    sf::Font czcionka;
+    std::vector<sf::Text> opcje;
+};
+
+Menu::Menu(float width, float height,const sf::Font &czcionka) : wybranaOpcja(0)
+{   
+    std::string tekstOpcji[] = {"Nowa gra", "Opcje", "Wyjscie"};
+
+    for (int i = 0; i < 3; i++)
+    {
+        sf::Text tekst;
+        tekst.setFont(czcionka);
+        //jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
+        tekst.setFillColor(i == wybranaOpcja ? sf::Color::Red : sf::Color::White);
+        tekst.setString(tekstOpcji[i]);
+        tekst.setPosition(sf::Vector2f(800 / 10, 600 / (6) * (i + 1)));
+        opcje.push_back(tekst);
+    }
+}
+
+void Menu::rysuj(sf::RenderWindow &window)
+{
+    for (const auto &opcja : opcje)
+    {
+        window.draw(opcja);
+    }
+}
+
+void Menu::przesunWGore()
+{
+    if (wybranaOpcja - 1 >= 0)
+    {
+        opcje[wybranaOpcja].setFillColor(sf::Color::White);
+        wybranaOpcja--;
+        opcje[wybranaOpcja].setFillColor(sf::Color::Red);
+    }
+}
+
+void Menu::przesunWDol()
+{
+    //sprawdzenie czy mozna przesunac w dol
+    if (wybranaOpcja + 1 < opcje.size())
+    {
+        opcje[wybranaOpcja].setFillColor(sf::Color::White);
+        wybranaOpcja++;
+        opcje[wybranaOpcja].setFillColor(sf::Color::Red);
+    }
+}
+
+int Menu::pobierzWybranaOpcje() const
+{
+    return wybranaOpcja;
+}
+
 class Gracz
 {
 public:
@@ -130,18 +195,20 @@ sf::FloatRect Pocisk::pobierzObszar() const
 
 class Punkty
 {
-    private:
+private:
     int punkty;
     sf::Text tekstPunkty;
-    public:
+
+public:
     Punkty();
     void dodaj(int punkty);
-    void rysuj(sf::RenderWindow& window, const sf::Font& czcionka);
+    void rysuj(sf::RenderWindow &window, const sf::Font &czcionka);
+    void ustawPunkty(int);
 };
 
 Punkty::Punkty() : punkty(0)
 {
-    //inicjalizacja tekstu
+    // inicjalizacja tekstu
     tekstPunkty.setCharacterSize(30);
     tekstPunkty.setFillColor(sf::Color::Blue);
 }
@@ -151,31 +218,40 @@ void Punkty::dodaj(int nowyPunkt)
     punkty += nowyPunkt;
 }
 
-void Punkty::rysuj(sf::RenderWindow& window, const sf::Font& czcionka)
+void Punkty::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
 {
     tekstPunkty.setFont(czcionka);
-    tekstPunkty.setPosition(600,20);
+    tekstPunkty.setPosition(600, 20);
     tekstPunkty.setString("Punkty: " + std::to_string(punkty));
     window.draw(tekstPunkty);
+}
+
+void Punkty::ustawPunkty(int nowePunkty) 
+{
+    punkty = nowePunkty;
 }
 
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Space invaders");
 
+    bool gra = false;
+
     bool przegrana = false;
     sf::Font czcionka;
-        if (!czcionka.loadFromFile("Chunk Five Print.otf"))
-        {
-            std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
-            return -1;
-        }
-        sf::Text tekstPrzegrana;
-        tekstPrzegrana.setFont(czcionka);
-        tekstPrzegrana.setString("Przegrales! Wcisnij ESC, aby opuscic gre.");
-        tekstPrzegrana.setCharacterSize(30);
-        tekstPrzegrana.setFillColor(sf::Color::Red);
-        tekstPrzegrana.setPosition(100, 250);
+    if (!czcionka.loadFromFile("Chunk Five Print.otf"))
+    {
+        std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
+        return 0;
+    }
+    Menu menu(800, 600, czcionka);
+
+    sf::Text tekstPrzegrana;
+    tekstPrzegrana.setFont(czcionka);
+    tekstPrzegrana.setString("Przegrales! Wcisnij ESC, aby opuscic gre.");
+    tekstPrzegrana.setCharacterSize(30);
+    tekstPrzegrana.setFillColor(sf::Color::Red);
+    tekstPrzegrana.setPosition(100, 250);
 
     Gracz gracz;
     std::vector<Wrog> wrogowie;
@@ -205,12 +281,12 @@ int main()
     // czas do obliczania płynności ruchu
     sf::Clock clock;
 
-    //do ograniczenie czasu miedzy kolejnymi strzalami
+    // do ograniczenie czasu miedzy kolejnymi strzalami
     float czasOdOstatniegoStrzalu = 0.f;
     float minimalnyCzasStrzalu = 0.3f;
 
-    //aby naprawić blad zwiazany z wielokrotnym dotykaniem krawedzi
-    bool dotknietoKrawedziWczesniej = false;   
+    // aby naprawić blad zwiazany z wielokrotnym dotykaniem krawedzi
+    bool dotknietoKrawedziWczesniej = false;
 
     // pętla gry
     while (window.isOpen())
@@ -221,149 +297,206 @@ int main()
         {
             if (event.type == sf::Event::Closed)
                 window.close();
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-                window.close();
-
-            // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
+            // if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+            //     window.close();
+            if (gra)
             {
-                pociski.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y);
-                czasOdOstatniegoStrzalu = 0.0f;
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                {
+                    gra = false;
+                }
+                // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
+                {
+                    pociski.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y);
+                    czasOdOstatniegoStrzalu = 0.0f;
+                }
+            }
+            else
+            {
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+                    menu.przesunWGore();
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+                    menu.przesunWDol();
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter))
+                {
+                    int opcja = menu.pobierzWybranaOpcje();
+                    if (opcja == 0)
+                    {
+                        gra = true;
+                        // reset stanu gracza
+                        gracz = Gracz();
+                        wrogowie.clear();
+                        pociski.clear();
+                        punkty.ustawPunkty(0);
+
+                        for (int rzad = 0; rzad < wiersze; ++rzad)
+                        {
+                            for (int kolumna = 0; kolumna < kolumny; ++kolumna)
+                            {
+                                float x = kolumna * odstepK + 20;
+                                float y = rzad * odstepW + 80;
+                                wrogowie.emplace_back(x, y);
+                            }
+                        }
+                        clock.restart();
+                        czasOdOstatniegoStrzalu = 0.f;
+                        dotknietoKrawedziWczesniej = false;
+                        przegrana = false;
+                    }
+                    else if (opcja == 1)
+                    {
+                    }
+                    else if (opcja == 2)
+                    {
+                        window.close();
+                    }
+                }
             }
         }
         // aktualizacja stanu gry
-        sf::Time deltaTime = clock.restart();
-        gracz.steruj(deltaTime.asSeconds());
-
-        czasOdOstatniegoStrzalu += deltaTime.asSeconds();
-
-        bool dotknietoKrawedzi = false;
-        for (auto &wrog : wrogowie)
+        if (gra)
         {
-            //ruch w poziomie
-            if (ruchWPrawo)
-            {
-                wrog.przesun(predkoscRuchu * deltaTime.asSeconds(), 0);
-            }
-            else
-            {
-                wrog.przesun(-predkoscRuchu * deltaTime.asSeconds(), 0);
-            }
+            sf::Time deltaTime = clock.restart();
+            gracz.steruj(deltaTime.asSeconds());
 
-            // sprawdzenie czy wrog dotknal krawedzi ekranu
-            if (!dotknietoKrawedzi && (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 800))
-            {
-                dotknietoKrawedzi = true; // zmiana kierunku
-            }
+            czasOdOstatniegoStrzalu += deltaTime.asSeconds();
 
-            //std::cout<<"Pozycja wroga Y: "<<wrog.pobierzPozycje().y<<std::endl;
-
-            // sprawdzenie czy ktorys wrog dotarl do dolnej krawedzi
-            if (wrog.pobierzPozycje().y + 20 >= 600)
-            {
-                przegrana = true;
-            }
-        }
-
-        // jesli dotykają krawędzi to zmiana kierunku
-        if (dotknietoKrawedzi && !dotknietoKrawedziWczesniej)
-        {
-            ruchWPrawo = !ruchWPrawo; // zmiana kierunku
+            bool dotknietoKrawedzi = false;
             for (auto &wrog : wrogowie)
             {
-                wrog.przesun(0, odstepW); // przesun wrogow w dol
-            }
-            dotknietoKrawedziWczesniej = true;
-        }
-        else if (!dotknietoKrawedzi)
-        {
-            dotknietoKrawedziWczesniej = false;
-        }
-
-
-        //komunikat o przegranej
-        if (przegrana) {
-            window.clear();
-            window.draw(tekstPrzegrana);
-            window.display();
-
-            while(true)
-            {
-                sf::Event event;
-                while (window.pollEvent(event))
+                // ruch w poziomie
+                if (ruchWPrawo)
                 {
-                    if (event.type == sf::Event::Closed || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-                    {
-                        window.close();
-                        break;
-                    }
-                }
-                if (!window.isOpen()) break;
-            }
-        }
-
-        for (auto it = pociski.begin(); it != pociski.end();)
-        {
-            it->ruszaj(deltaTime.asSeconds());
-
-            // usuwanie pociskow ktore wyszly poza zakres
-            if (it->pobierzObszar().top + it->pobierzObszar().height < 0)
-            {
-                it = pociski.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        // Sprawdzanie kolizji między pociskami a przeciwnikami
-        for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
-        {
-            bool wrogZniszczony = false;
-
-            for (auto pociskIt = pociski.begin(); pociskIt != pociski.end();)
-            {
-                if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzPozycje(), sf::Vector2f(40, 20))))
-                {
-                    // Jeśli kolizja, usuń pocisk i oznacz przeciwnika do usunięcia
-                    pociskIt = pociski.erase(pociskIt);
-                    wrogZniszczony = true;
-                    break;
+                    wrog.przesun(predkoscRuchu * deltaTime.asSeconds(), 0);
                 }
                 else
                 {
-                    ++pociskIt;
+                    wrog.przesun(-predkoscRuchu * deltaTime.asSeconds(), 0);
+                }
+
+                // sprawdzenie czy wrog dotknal krawedzi ekranu
+                if (!dotknietoKrawedzi && (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 800))
+                {
+                    dotknietoKrawedzi = true; // zmiana kierunku
+                }
+
+                // std::cout<<"Pozycja wroga Y: "<<wrog.pobierzPozycje().y<<std::endl;
+
+                // sprawdzenie czy ktorys wrog dotarl do dolnej krawedzi
+                if (wrog.pobierzPozycje().y + 20 >= 600)
+                {
+                    przegrana = true;
                 }
             }
 
-            // Usuń przeciwnika, jeśli został trafiony
-            if (wrogZniszczony)
+            // jesli dotykają krawędzi to zmiana kierunku
+            if (dotknietoKrawedzi && !dotknietoKrawedziWczesniej)
             {
-                wrogIt = wrogowie.erase(wrogIt);
-                punkty.dodaj(10);
+                ruchWPrawo = !ruchWPrawo; // zmiana kierunku
+                for (auto &wrog : wrogowie)
+                {
+                    wrog.przesun(0, odstepW); // przesun wrogow w dol
+                }
+                dotknietoKrawedziWczesniej = true;
             }
-            else
+            else if (!dotknietoKrawedzi)
             {
-                ++wrogIt;
+                dotknietoKrawedziWczesniej = false;
+            }
+
+            // komunikat o przegranej
+            if (przegrana)
+            {
+                window.clear();
+                window.draw(tekstPrzegrana);
+                window.display();
+
+                while (true)
+                {
+                    sf::Event event;
+                    while (window.pollEvent(event))
+                    {
+                        if (event.type == sf::Event::Closed || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                        {
+                            window.close();
+                            break;
+                        }
+                    }
+                    if (!window.isOpen())
+                        break;
+                }
+            }
+
+            for (auto it = pociski.begin(); it != pociski.end();)
+            {
+                it->ruszaj(deltaTime.asSeconds());
+
+                // usuwanie pociskow ktore wyszly poza zakres
+                if (it->pobierzObszar().top + it->pobierzObszar().height < 0)
+                {
+                    it = pociski.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+
+            // Sprawdzanie kolizji między pociskami a przeciwnikami
+            for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
+            {
+                bool wrogZniszczony = false;
+
+                for (auto pociskIt = pociski.begin(); pociskIt != pociski.end();)
+                {
+                    if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzPozycje(), sf::Vector2f(40, 20))))
+                    {
+                        // Jeśli kolizja, usuń pocisk i oznacz przeciwnika do usunięcia
+                        pociskIt = pociski.erase(pociskIt);
+                        wrogZniszczony = true;
+                        break;
+                    }
+                    else
+                    {
+                        ++pociskIt;
+                    }
+                }
+
+                // Usuń przeciwnika, jeśli został trafiony
+                if (wrogZniszczony)
+                {
+                    wrogIt = wrogowie.erase(wrogIt);
+                    punkty.dodaj(10);
+                }
+                else
+                {
+                    ++wrogIt;
+                }
             }
         }
 
         // renderowanie
         window.clear();
-        gracz.rysuj(window);
-
-        for (auto &wrog : wrogowie)
+        if (gra)
         {
-            wrog.rysuj(window);
-        }
+            gracz.rysuj(window);
 
-        for (auto &pocisk : pociski)
+            for (auto &wrog : wrogowie)
+            {
+                wrog.rysuj(window);
+            }
+
+            for (auto &pocisk : pociski)
+            {
+                pocisk.rysuj(window);
+            }
+            punkty.rysuj(window, czcionka);
+        }
+        else
         {
-            pocisk.rysuj(window);
+            menu.rysuj(window);
         }
-        punkty.rysuj(window, czcionka);
-
         window.display();
     }
 
