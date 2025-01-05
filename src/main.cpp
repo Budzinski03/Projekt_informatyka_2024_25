@@ -1,11 +1,12 @@
 #include <iostream>
 #include <SFML\Graphics.hpp>
 #include <vector>
+#include <fstream>
 
 class Menu
 {
 public:
-    Menu(float, float,const sf::Font &);
+    Menu(float, float, const sf::Font &);
     void rysuj(sf::RenderWindow &window);
     void przesunWGore();
     void przesunWDol();
@@ -17,15 +18,15 @@ private:
     std::vector<sf::Text> opcje;
 };
 
-Menu::Menu(float width, float height,const sf::Font &czcionka) : wybranaOpcja(0)
-{   
-    std::string tekstOpcji[] = {"Nowa gra", "Opcje", "Wyjscie"};
+Menu::Menu(float width, float height, const sf::Font &czcionka) : wybranaOpcja(0)
+{
+    std::string tekstOpcji[] = {"Nowa gra", "Ranking", "Wyjscie"};
 
     for (int i = 0; i < 3; i++)
     {
         sf::Text tekst;
         tekst.setFont(czcionka);
-        //jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
+        // jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
         tekst.setFillColor(i == wybranaOpcja ? sf::Color::Red : sf::Color::White);
         tekst.setString(tekstOpcji[i]);
         tekst.setPosition(sf::Vector2f(800 / 10, 600 / (6) * (i + 1)));
@@ -53,7 +54,7 @@ void Menu::przesunWGore()
 
 void Menu::przesunWDol()
 {
-    //sprawdzenie czy mozna przesunac w dol
+    // sprawdzenie czy mozna przesunac w dol
     if (wybranaOpcja + 1 < opcje.size())
     {
         opcje[wybranaOpcja].setFillColor(sf::Color::White);
@@ -204,6 +205,7 @@ public:
     void dodaj(int punkty);
     void rysuj(sf::RenderWindow &window, const sf::Font &czcionka);
     void ustawPunkty(int);
+    int pobierzPunkty();
 };
 
 Punkty::Punkty() : punkty(0)
@@ -226,9 +228,92 @@ void Punkty::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
     window.draw(tekstPunkty);
 }
 
-void Punkty::ustawPunkty(int nowePunkty) 
+void Punkty::ustawPunkty(int nowePunkty)
 {
     punkty = nowePunkty;
+}
+
+int Punkty::pobierzPunkty()
+{
+    return punkty;
+}
+
+class Ranking
+{
+public:
+    Ranking(const std::string &nazwaPliku);
+    void dodajWynik(const std::string &nazwaGracza, int punkty);
+    void zaladuj();
+    void zapisz();
+    void rysuj(sf::RenderWindow &window, const sf::Font &czcionka);
+
+private:
+    std::string nazwaPliku;
+    std::vector<std::pair<std::string, int>> wyniki;
+    sf::Text tekstRanking;
+};
+
+Ranking::Ranking(const std::string &nazwaPliku) : nazwaPliku(nazwaPliku)
+{
+    zaladuj();
+}
+
+void Ranking::dodajWynik(const std::string &nazwaGracza, int punkty)
+{
+    wyniki.push_back({nazwaGracza, punkty});
+    std::sort(wyniki.begin(), wyniki.end(), [](const auto &a, const auto &b)
+              { return a.second > b.second; });
+    if (wyniki.size() > 10) // max 10 wynikow
+    {
+        wyniki.pop_back();
+    }
+    zapisz();
+}
+
+void Ranking::zaladuj()
+{
+    wyniki.clear();
+    std::ifstream plik(nazwaPliku);
+    if (plik.is_open())
+    {
+        std::string nazwaGracza;
+        int punkty;
+        while (plik >> nazwaGracza >> punkty)
+        {
+            wyniki.push_back({nazwaGracza, punkty});
+        }
+        plik.close();
+    }
+}
+
+void Ranking::zapisz()
+{
+    std::ofstream plik(nazwaPliku);
+    if (plik.is_open())
+    {
+        for (const auto &wynik : wyniki)
+        {
+            plik << wynik.first << " " << wynik.second << "\n";
+        }
+        plik.close();
+    }
+}
+
+void Ranking::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
+{
+    std::string tekst;
+    int poz = 1;
+    for (const auto &wynik : wyniki)
+    {
+        tekst += std::to_string(poz) + ". " + wynik.first + ": " + std::to_string(wynik.second) + "\n";
+        poz++;
+    }
+    tekstRanking.setFont(czcionka);
+    tekstRanking.setString(tekst);
+    tekstRanking.setCharacterSize(30);
+    tekstRanking.setFillColor(sf::Color::White);
+    tekstRanking.setPosition(100, 100);
+    window.draw(tekstRanking);
 }
 
 int main()
@@ -236,8 +321,9 @@ int main()
     sf::RenderWindow window(sf::VideoMode(800, 600), "Space invaders");
 
     bool gra = false;
-
     bool przegrana = false;
+    bool ranking = false;
+
     sf::Font czcionka;
     if (!czcionka.loadFromFile("Chunk Five Print.otf"))
     {
@@ -245,6 +331,7 @@ int main()
         return 0;
     }
     Menu menu(800, 600, czcionka);
+    Ranking rank("ranking.txt");
 
     sf::Text tekstPrzegrana;
     tekstPrzegrana.setFont(czcionka);
@@ -304,12 +391,20 @@ int main()
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
                 {
                     gra = false;
+                    rank.dodajWynik("Gracz", punkty.pobierzPunkty());
                 }
                 // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
                 {
                     pociski.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y);
                     czasOdOstatniegoStrzalu = 0.0f;
+                }
+            }
+            else if (ranking)
+            {
+                if ( sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                {
+                    ranking = false;
                 }
             }
             else
@@ -346,6 +441,7 @@ int main()
                     }
                     else if (opcja == 1)
                     {
+                        ranking = true;
                     }
                     else if (opcja == 2)
                     {
@@ -492,6 +588,10 @@ int main()
                 pocisk.rysuj(window);
             }
             punkty.rysuj(window, czcionka);
+        }
+        else if (ranking)
+        {
+            rank.rysuj(window, czcionka);
         }
         else
         {
