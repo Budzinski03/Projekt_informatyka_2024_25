@@ -88,7 +88,7 @@ Gracz::Gracz() : predkosc(200.f)
     ksztalt.setPosition(375, 550);
 }
 
-// obs≈Çuga wej≈õcia
+// obsàuga wejòcia
 void Gracz::steruj(float deltaTime)
 {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
@@ -178,7 +178,7 @@ Pocisk::Pocisk(float x, float y) : predkosc(-300.f)
     ksztalt.setPosition(x, y);
 }
 
-// ruch pocisk√≥w
+// ruch pocisk¢w
 void Pocisk::ruszaj(float deltaTime)
 {
     ksztalt.move(0, predkosc * deltaTime);
@@ -316,29 +316,59 @@ void Ranking::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
     window.draw(tekstRanking);
 }
 
+class Komunikat 
+{
+public:
+    Komunikat(const sf::Font &czcionka);
+    void ustawTekst(const std::string &tekst, const sf::Color &kolor);
+    void rysuj(sf::RenderWindow &window);
+private:
+    sf::Text tekstKomunikatu;
+};
+
+Komunikat::Komunikat(const sf::Font &czcionka)
+{
+    tekstKomunikatu.setFont(czcionka);
+    tekstKomunikatu.setCharacterSize(40);
+    tekstKomunikatu.setPosition(60, 250);
+}
+
+void Komunikat::ustawTekst(const std::string &tekst, const sf::Color &kolor)
+{
+    tekstKomunikatu.setString(tekst);
+    tekstKomunikatu.setFillColor(kolor);
+    tekstKomunikatu.setOutlineThickness(2);
+    tekstKomunikatu.setOutlineColor(sf::Color::White);
+}
+
+void Komunikat::rysuj(sf::RenderWindow &window)
+{
+    window.draw(tekstKomunikatu);
+}
+
+
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Space invaders");
 
-    bool gra = false;
-    bool przegrana = false;
+    bool gra = false;               //flaga gry
+    bool przegrana = false;      
+    bool wygrana = false;
     bool ranking = false;
+    bool wyswietlKomunikat = false;
 
+    //zaladowanie czcionki
     sf::Font czcionka;
-    if (!czcionka.loadFromFile("Chunk Five Print.otf"))
+    if (!czcionka.loadFromFile("Pricedown Bl.otf"))
     {
         std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
         return 0;
     }
     Menu menu(800, 600, czcionka);
     Ranking rank("ranking.txt");
+    Komunikat komunikat(czcionka);
 
-    sf::Text tekstPrzegrana;
-    tekstPrzegrana.setFont(czcionka);
-    tekstPrzegrana.setString("Przegrales! Wcisnij ESC, aby opuscic gre.");
-    tekstPrzegrana.setCharacterSize(30);
-    tekstPrzegrana.setFillColor(sf::Color::Red);
-    tekstPrzegrana.setPosition(100, 250);
 
     Gracz gracz;
     std::vector<Wrog> wrogowie;
@@ -351,7 +381,7 @@ int main()
     float odstepK = 60.f;
     float odstepW = 40.f;
 
-    // kierunek i szybko≈õƒá ruchu przeciwnik√≥w
+    // kierunek i szybkoòÜ ruchu przeciwnik¢w
     bool ruchWPrawo = true;     // czy grupa porusza sie w prawo
     float predkoscRuchu = 50.f; // predkosc ruchu w poziomie
 
@@ -365,20 +395,20 @@ int main()
         }
     }
 
-    // czas do obliczania p≈Çynno≈õci ruchu
+    // czas do obliczania pàynnoòci ruchu
     sf::Clock clock;
 
     // do ograniczenie czasu miedzy kolejnymi strzalami
     float czasOdOstatniegoStrzalu = 0.f;
     float minimalnyCzasStrzalu = 0.3f;
 
-    // aby naprawiƒá blad zwiazany z wielokrotnym dotykaniem krawedzi
+    // naprawa bledu zwiazanego z wielokrotnym dotykaniem krawedzi
     bool dotknietoKrawedziWczesniej = false;
 
-    // pƒôtla gry
+    // p©tla gry
     while (window.isOpen())
     {
-        // obs≈Çuga zdarze≈Ñ
+        // obsàuga zdarze‰
         sf::Event event;
         while (window.pollEvent(event))
         {
@@ -392,12 +422,22 @@ int main()
                 {
                     gra = false;
                     rank.dodajWynik("Gracz", punkty.pobierzPunkty());
-                }
+                }                
                 // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
                 {
                     pociski.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y);
                     czasOdOstatniegoStrzalu = 0.0f;
+                }
+            }
+            else if (wyswietlKomunikat)
+            {
+                if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                {
+                    wyswietlKomunikat = false;
+                    przegrana = false;
+                    wygrana = false;
+                    gra = false;
                 }
             }
             else if (ranking)
@@ -438,6 +478,7 @@ int main()
                         czasOdOstatniegoStrzalu = 0.f;
                         dotknietoKrawedziWczesniej = false;
                         przegrana = false;
+                        wygrana = false;
                     }
                     else if (opcja == 1)
                     {
@@ -450,8 +491,8 @@ int main()
                 }
             }
         }
-        // aktualizacja stanu gry
-        if (gra)
+        // aktualizacja stanu gry //gdy gra jest aktywna i komunikat nie jest wyswietlany
+        if (gra && !wyswietlKomunikat)
         {
             sf::Time deltaTime = clock.restart();
             gracz.steruj(deltaTime.asSeconds());
@@ -483,10 +524,19 @@ int main()
                 if (wrog.pobierzPozycje().y + 20 >= 600)
                 {
                     przegrana = true;
+                    wyswietlKomunikat = true;
+                    komunikat.ustawTekst("Przegrale\346! Wcisnij ESC, aby opuscic gre!", sf::Color::Red);
                 }
             }
 
-            // jesli dotykajƒÖ krawƒôdzi to zmiana kierunku
+            if (wrogowie.empty())
+            {
+                wygrana = true;
+                wyswietlKomunikat = true;
+                komunikat.ustawTekst("Wygrales! Wcisnij ESC, aby opuscic gre", sf::Color::Green);
+            }
+
+            // jesli dotykaj• kraw©dzi to zmiana kierunku
             if (dotknietoKrawedzi && !dotknietoKrawedziWczesniej)
             {
                 ruchWPrawo = !ruchWPrawo; // zmiana kierunku
@@ -501,28 +551,6 @@ int main()
                 dotknietoKrawedziWczesniej = false;
             }
 
-            // komunikat o przegranej
-            if (przegrana)
-            {
-                window.clear();
-                window.draw(tekstPrzegrana);
-                window.display();
-
-                while (true)
-                {
-                    sf::Event event;
-                    while (window.pollEvent(event))
-                    {
-                        if (event.type == sf::Event::Closed || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-                        {
-                            window.close();
-                            break;
-                        }
-                    }
-                    if (!window.isOpen())
-                        break;
-                }
-            }
 
             for (auto it = pociski.begin(); it != pociski.end();)
             {
@@ -539,7 +567,7 @@ int main()
                 }
             }
 
-            // Sprawdzanie kolizji miƒôdzy pociskami a przeciwnikami
+            // Sprawdzanie kolizji mi©dzy pociskami a przeciwnikami
             for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
             {
                 bool wrogZniszczony = false;
@@ -548,7 +576,7 @@ int main()
                 {
                     if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzPozycje(), sf::Vector2f(40, 20))))
                     {
-                        // Je≈õli kolizja, usu≈Ñ pocisk i oznacz przeciwnika do usuniƒôcia
+                        // Jeòli kolizja, usu‰ pocisk i oznacz przeciwnika do usuni©cia
                         pociskIt = pociski.erase(pociskIt);
                         wrogZniszczony = true;
                         break;
@@ -559,7 +587,7 @@ int main()
                     }
                 }
 
-                // Usu≈Ñ przeciwnika, je≈õli zosta≈Ç trafiony
+                // Usu‰ przeciwnika, jeòli zostaàeò trafiony
                 if (wrogZniszczony)
                 {
                     wrogIt = wrogowie.erase(wrogIt);
@@ -593,11 +621,17 @@ int main()
         {
             rank.rysuj(window, czcionka);
         }
-        else
+        else if (!wyswietlKomunikat)
         {
             menu.rysuj(window);
         }
+        //komunikaty o wygranej lub prezgranej
+        if (wyswietlKomunikat)
+        {
+            komunikat.rysuj(window);
+        }
         window.display();
+
     }
 
     return 0;
