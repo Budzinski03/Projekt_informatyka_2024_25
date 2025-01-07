@@ -161,7 +161,7 @@ void Wrog::przesun(float dx, float dy)
 class Pocisk
 {
 public:
-    Pocisk(float x, float y);
+    Pocisk(float x, float y, float kierunek);
     void ruszaj(float deltaTime);
     void rysuj(sf::RenderWindow &window);
     sf::FloatRect pobierzObszar() const;
@@ -169,19 +169,21 @@ public:
 private:
     sf::RectangleShape ksztalt;
     float predkosc;
+    float kierunek; //-1 dla gracza +1 dla wroga
 };
 
-Pocisk::Pocisk(float x, float y) : predkosc(-300.f)
+Pocisk::Pocisk(float x, float y, float kierunek) : predkosc(300.f), kierunek(kierunek)
 {
     ksztalt.setSize(sf::Vector2f(5, 10));
-    ksztalt.setFillColor(sf::Color::White);
+    // jezeli kierunek < 0 to bialy, w innym przypadku ¾¢ˆty
+    ksztalt.setFillColor(kierunek < 0 ? sf::Color::White : sf::Color::Magenta);
     ksztalt.setPosition(x, y);
 }
 
 // ruch pocisk¢w
 void Pocisk::ruszaj(float deltaTime)
 {
-    ksztalt.move(0, predkosc * deltaTime);
+    ksztalt.move(0, kierunek * predkosc * deltaTime);
 }
 
 void Pocisk::rysuj(sf::RenderWindow &window)
@@ -316,12 +318,13 @@ void Ranking::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
     window.draw(tekstRanking);
 }
 
-class Komunikat 
+class Komunikat
 {
 public:
     Komunikat(const sf::Font &czcionka);
     void ustawTekst(const std::string &tekst, const sf::Color &kolor);
     void rysuj(sf::RenderWindow &window);
+
 private:
     sf::Text tekstKomunikatu;
 };
@@ -346,19 +349,17 @@ void Komunikat::rysuj(sf::RenderWindow &window)
     window.draw(tekstKomunikatu);
 }
 
-
-
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Space invaders");
 
-    bool gra = false;               //flaga gry
-    bool przegrana = false;      
+    bool gra = false; // flaga gry
+    bool przegrana = false;
     bool wygrana = false;
     bool ranking = false;
     bool wyswietlKomunikat = false;
 
-    //zaladowanie czcionki
+    // zaladowanie czcionki
     sf::Font czcionka;
     if (!czcionka.loadFromFile("Pricedown Bl.otf"))
     {
@@ -369,10 +370,10 @@ int main()
     Ranking rank("ranking.txt");
     Komunikat komunikat(czcionka);
 
-
     Gracz gracz;
     std::vector<Wrog> wrogowie;
-    std::vector<Pocisk> pociski;
+    std::vector<Pocisk> pociskiGracza;
+    std::vector<Pocisk> pociskiWroga;
     Punkty punkty;
 
     // Dodanie przeciwnikow
@@ -402,6 +403,10 @@ int main()
     float czasOdOstatniegoStrzalu = 0.f;
     float minimalnyCzasStrzalu = 0.3f;
 
+    // czas pomiedzy strzalami wrogow
+    float czasOdOstatniegoStrzaluWroga = 0.f;
+    float minimalnyCzasStrzaluWroga = 1.5f;
+
     // naprawa bledu zwiazanego z wielokrotnym dotykaniem krawedzi
     bool dotknietoKrawedziWczesniej = false;
 
@@ -422,17 +427,17 @@ int main()
                 {
                     gra = false;
                     rank.dodajWynik("Gracz", punkty.pobierzPunkty());
-                }                
+                }
                 // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
                 {
-                    pociski.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y);
+                    pociskiGracza.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y, -1.f);
                     czasOdOstatniegoStrzalu = 0.0f;
                 }
             }
             else if (wyswietlKomunikat)
             {
-                if(sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
                 {
                     wyswietlKomunikat = false;
                     przegrana = false;
@@ -442,7 +447,7 @@ int main()
             }
             else if (ranking)
             {
-                if ( sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
                 {
                     ranking = false;
                 }
@@ -462,7 +467,7 @@ int main()
                         // reset stanu gracza
                         gracz = Gracz();
                         wrogowie.clear();
-                        pociski.clear();
+                        pociskiGracza.clear();
                         punkty.ustawPunkty(0);
 
                         for (int rzad = 0; rzad < wiersze; ++rzad)
@@ -551,15 +556,33 @@ int main()
                 dotknietoKrawedziWczesniej = false;
             }
 
-
-            for (auto it = pociski.begin(); it != pociski.end();)
+            for (auto it = pociskiGracza.begin(); it != pociskiGracza.end();)
             {
                 it->ruszaj(deltaTime.asSeconds());
 
-                // usuwanie pociskow ktore wyszly poza zakres
-                if (it->pobierzObszar().top + it->pobierzObszar().height < 0)
+                bool wrogZniszczony = false;
+                // Sprawdzanie kolizji mi©dzy pociskami a przeciwnikami
+                for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
                 {
-                    it = pociski.erase(it);
+
+                    if (it->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzPozycje(), sf::Vector2f(40, 20))))
+                    {
+                        // jesli kolizja do wrog usuawny
+                        wrogIt = wrogowie.erase(wrogIt);
+                        wrogZniszczony = true;
+                        punkty.dodaj(10);
+                        break;
+                    }
+                    else
+                    {
+                        ++wrogIt;
+                    }
+                }
+
+                // usuwanie pociskow po zderzeniu lub ktore wyszly poza zakres
+                if (wrogZniszczony || it->pobierzObszar().top + it->pobierzObszar().height < 0)
+                {
+                    it = pociskiGracza.erase(it);
                 }
                 else
                 {
@@ -567,35 +590,35 @@ int main()
                 }
             }
 
-            // Sprawdzanie kolizji mi©dzy pociskami a przeciwnikami
-            for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
+            czasOdOstatniegoStrzaluWroga += deltaTime.asSeconds();
+            if (czasOdOstatniegoStrzaluWroga >= minimalnyCzasStrzaluWroga && !wrogowie.empty())
             {
-                bool wrogZniszczony = false;
+                int indeksWroga = rand() % wrogowie.size();
+                sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzPozycje();
+                pociskiWroga.emplace_back(pozycjaWroga.x + 20.f, pozycjaWroga.y + 20.f, 1.f);
+                czasOdOstatniegoStrzaluWroga = 0.f;
+            }
 
-                for (auto pociskIt = pociski.begin(); pociskIt != pociski.end();)
+            for (auto it = pociskiWroga.begin(); it !=pociskiWroga.end();)
+            {
+                it->ruszaj(deltaTime.asSeconds());
+
+                //kolizja z graczem
+                if (it->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), sf::Vector2f(50,20))))
                 {
-                    if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzPozycje(), sf::Vector2f(40, 20))))
-                    {
-                        // Je˜li kolizja, usuä pocisk i oznacz przeciwnika do usuni©cia
-                        pociskIt = pociski.erase(pociskIt);
-                        wrogZniszczony = true;
-                        break;
-                    }
-                    else
-                    {
-                        ++pociskIt;
-                    }
+                    przegrana = true;
+                    wyswietlKomunikat = true;
+                    komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red);
+                    it = pociskiWroga.erase(it);
                 }
-
-                // Usuä przeciwnika, je˜li zostaˆe˜ trafiony
-                if (wrogZniszczony)
+                //usuniecie pociskow spoza ekranu
+                else if (it->pobierzObszar().top>600)
                 {
-                    wrogIt = wrogowie.erase(wrogIt);
-                    punkty.dodaj(10);
+                    it = pociskiWroga.erase(it);
                 }
                 else
                 {
-                    ++wrogIt;
+                    ++it;
                 }
             }
         }
@@ -611,11 +634,16 @@ int main()
                 wrog.rysuj(window);
             }
 
-            for (auto &pocisk : pociski)
+            for (auto &pocisk : pociskiGracza)
             {
                 pocisk.rysuj(window);
             }
             punkty.rysuj(window, czcionka);
+
+            for (auto &pocisk : pociskiWroga)
+            {
+                pocisk.rysuj(window);
+            }
         }
         else if (ranking)
         {
@@ -625,13 +653,12 @@ int main()
         {
             menu.rysuj(window);
         }
-        //komunikaty o wygranej lub prezgranej
+        // komunikaty o wygranej lub prezgranej
         if (wyswietlKomunikat)
         {
             komunikat.rysuj(window);
         }
         window.display();
-
     }
 
     return 0;
