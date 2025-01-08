@@ -6,7 +6,7 @@
 class Menu
 {
 public:
-    Menu(float, float, const sf::Font &);
+    Menu(const sf::Font &);
     void rysuj(sf::RenderWindow &window);
     void przesunWGore();
     void przesunWDol();
@@ -18,7 +18,7 @@ private:
     std::vector<sf::Text> opcje;
 };
 
-Menu::Menu(float width, float height, const sf::Font &czcionka) : wybranaOpcja(0)
+Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
 {
     std::string tekstOpcji[] = {"Nowa gra", "Ranking", "Wyjscie"};
 
@@ -29,7 +29,7 @@ Menu::Menu(float width, float height, const sf::Font &czcionka) : wybranaOpcja(0
         // jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
         tekst.setFillColor(i == wybranaOpcja ? sf::Color::Red : sf::Color::White);
         tekst.setString(tekstOpcji[i]);
-        tekst.setPosition(sf::Vector2f(800 / 10, 600 / (6) * (i + 1)));
+        tekst.setPosition(sf::Vector2f(960 / 10, 600 / (6) * (i + 1)));
         opcje.push_back(tekst);
     }
 }
@@ -71,21 +71,37 @@ int Menu::pobierzWybranaOpcje() const
 class Gracz
 {
 public:
-    Gracz();
+    Gracz(const sf::Texture &teksturaSerca);
     void steruj(float);
     void rysuj(sf::RenderWindow &);
+    void stracZycie();
     sf::Vector2f pobierzPozycje() const;
+    int pobierzLiczbeZyc() const;
 
 private:
     sf::RectangleShape ksztalt;
     float predkosc;
+    int liczbaZyc;
+    std::vector<sf::Sprite> serca;
+
 };
 
-Gracz::Gracz() : predkosc(200.f)
+Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(5)
 {
     ksztalt.setSize(sf::Vector2f(50, 20));
     ksztalt.setFillColor(sf::Color::Green);
     ksztalt.setPosition(375, 550);
+
+    // inicjalizacja serc
+    for (int i = 0; i < liczbaZyc; ++i)
+    {
+        sf::Sprite serce;
+
+        serce.setTexture(teksturaSerca);
+        serce.setScale(0.05f, 0.05f);
+        serce.setPosition(20 + i * 30, 20);
+        serca.push_back(serce);
+    }
 }
 
 // obsˆuga wej˜cia
@@ -101,20 +117,40 @@ void Gracz::steruj(float deltaTime)
     {
         ksztalt.setPosition(0, ksztalt.getPosition().y);
     }
-    if (ksztalt.getPosition().x > 750)
+    if (ksztalt.getPosition().x > 910)
     {
-        ksztalt.setPosition(750, ksztalt.getPosition().y);
+        ksztalt.setPosition(910, ksztalt.getPosition().y);
     }
 }
 
 void Gracz::rysuj(sf::RenderWindow &window)
 {
     window.draw(ksztalt);
+
+    // rysowanie serc
+    for (const auto &serce : serca)
+    {
+        window.draw(serce);
+    }
 }
 
 sf::Vector2f Gracz::pobierzPozycje() const
 {
     return ksztalt.getPosition();
+}
+
+void Gracz::stracZycie()
+{
+    if (liczbaZyc > 0)
+        liczbaZyc--;
+        serca.pop_back();
+}
+
+
+
+int Gracz::pobierzLiczbeZyc() const
+{
+    return liczbaZyc;
 }
 
 class Wrog
@@ -175,8 +211,8 @@ private:
 Pocisk::Pocisk(float x, float y, float kierunek) : predkosc(300.f), kierunek(kierunek)
 {
     ksztalt.setSize(sf::Vector2f(5, 10));
-    // jezeli kierunek < 0 to bialy, w innym przypadku ¾¢ˆty
-    ksztalt.setFillColor(kierunek < 0 ? sf::Color::White : sf::Color::Magenta);
+    // jezeli kierunek < 0 to magenta, w innym przypadku red
+    ksztalt.setFillColor(kierunek < 0 ? sf::Color::Magenta : sf::Color::Yellow);
     ksztalt.setPosition(x, y);
 }
 
@@ -225,7 +261,7 @@ void Punkty::dodaj(int nowyPunkt)
 void Punkty::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
 {
     tekstPunkty.setFont(czcionka);
-    tekstPunkty.setPosition(600, 20);
+    tekstPunkty.setPosition(760, 20);
     tekstPunkty.setString("Punkty: " + std::to_string(punkty));
     window.draw(tekstPunkty);
 }
@@ -351,7 +387,7 @@ void Komunikat::rysuj(sf::RenderWindow &window)
 
 int main()
 {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Space invaders");
+    sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
 
     bool gra = false; // flaga gry
     bool przegrana = false;
@@ -366,15 +402,24 @@ int main()
         std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
         return 0;
     }
-    Menu menu(800, 600, czcionka);
+
+    sf::Texture teksturaSerca;
+    if (!teksturaSerca.loadFromFile("../assets/hearth.png"))
+    {
+        std::cout<<"Nie udalo sie zaladowac obrazka serca!"<<std::endl;
+        return -1;
+    }
+
+    Menu menu(czcionka);
     Ranking rank("ranking.txt");
     Komunikat komunikat(czcionka);
 
-    Gracz gracz;
+    Gracz gracz(teksturaSerca);
     std::vector<Wrog> wrogowie;
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
     Punkty punkty;
+
 
     // Dodanie przeciwnikow
     int kolumny = 10;
@@ -465,7 +510,7 @@ int main()
                     {
                         gra = true;
                         // reset stanu gracza
-                        gracz = Gracz();
+                        gracz = Gracz(teksturaSerca);
                         wrogowie.clear();
                         pociskiGracza.clear();
                         punkty.ustawPunkty(0);
@@ -518,7 +563,7 @@ int main()
                 }
 
                 // sprawdzenie czy wrog dotknal krawedzi ekranu
-                if (!dotknietoKrawedzi && (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 800))
+                if (!dotknietoKrawedzi && (wrog.pobierzPozycje().x <= 0 || wrog.pobierzPozycje().x + 40 >= 960))
                 {
                     dotknietoKrawedzi = true; // zmiana kierunku
                 }
@@ -599,20 +644,25 @@ int main()
                 czasOdOstatniegoStrzaluWroga = 0.f;
             }
 
-            for (auto it = pociskiWroga.begin(); it !=pociskiWroga.end();)
+            for (auto it = pociskiWroga.begin(); it != pociskiWroga.end();)
             {
                 it->ruszaj(deltaTime.asSeconds());
 
-                //kolizja z graczem
-                if (it->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), sf::Vector2f(50,20))))
+                // kolizja z graczem + przegrana jezeli dotknie pocisku 3 razy
+                if (it->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), sf::Vector2f(50, 20))))
                 {
-                    przegrana = true;
-                    wyswietlKomunikat = true;
-                    komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red);
+                    gracz.stracZycie();
                     it = pociskiWroga.erase(it);
+
+                    if (gracz.pobierzLiczbeZyc() == 0)
+                    {
+                        przegrana = true;
+                        wyswietlKomunikat = true;
+                        komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red);
+                    }
                 }
-                //usuniecie pociskow spoza ekranu
-                else if (it->pobierzObszar().top>600)
+                // usuniecie pociskow spoza ekranu
+                else if (it->pobierzObszar().top > 600)
                 {
                     it = pociskiWroga.erase(it);
                 }
