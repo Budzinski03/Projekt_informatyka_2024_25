@@ -83,10 +83,9 @@ private:
     float predkosc;
     int liczbaZyc;
     std::vector<sf::Sprite> serca;
-
 };
 
-Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(5)
+Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(2)
 {
     ksztalt.setSize(sf::Vector2f(50, 20));
     ksztalt.setFillColor(sf::Color::Green);
@@ -143,10 +142,8 @@ void Gracz::stracZycie()
 {
     if (liczbaZyc > 0)
         liczbaZyc--;
-        serca.pop_back();
+    serca.pop_back();
 }
-
-
 
 int Gracz::pobierzLiczbeZyc() const
 {
@@ -358,8 +355,9 @@ class Komunikat
 {
 public:
     Komunikat(const sf::Font &czcionka);
-    void ustawTekst(const std::string &tekst, const sf::Color &kolor);
+    void ustawTekst(const std::string &tekst, const sf::Color &kolor, const sf::Color &kolorObramowania);
     void rysuj(sf::RenderWindow &window);
+    void ustawPozycje(float, float);
 
 private:
     sf::Text tekstKomunikatu;
@@ -372,17 +370,22 @@ Komunikat::Komunikat(const sf::Font &czcionka)
     tekstKomunikatu.setPosition(60, 250);
 }
 
-void Komunikat::ustawTekst(const std::string &tekst, const sf::Color &kolor)
+void Komunikat::ustawTekst(const std::string &tekst, const sf::Color &kolor, const sf::Color &kolorObramowania)
 {
     tekstKomunikatu.setString(tekst);
     tekstKomunikatu.setFillColor(kolor);
     tekstKomunikatu.setOutlineThickness(2);
-    tekstKomunikatu.setOutlineColor(sf::Color::White);
+    tekstKomunikatu.setOutlineColor(kolorObramowania);
 }
 
 void Komunikat::rysuj(sf::RenderWindow &window)
 {
     window.draw(tekstKomunikatu);
+}
+
+void Komunikat::ustawPozycje(float x, float y)
+{
+    tekstKomunikatu.setPosition(x, y);
 }
 
 int main()
@@ -394,6 +397,8 @@ int main()
     bool wygrana = false;
     bool ranking = false;
     bool wyswietlKomunikat = false;
+    bool pomoc = false;
+    bool powrotZPomocy = false; //zapobiegniecie przerywania gry przy wychodzeniu z pomocy
 
     // zaladowanie czcionki
     sf::Font czcionka;
@@ -406,7 +411,7 @@ int main()
     sf::Texture teksturaSerca;
     if (!teksturaSerca.loadFromFile("../assets/hearth.png"))
     {
-        std::cout<<"Nie udalo sie zaladowac obrazka serca!"<<std::endl;
+        std::cout << "Nie udalo sie zaladowac obrazka serca!" << std::endl;
         return -1;
     }
 
@@ -420,9 +425,23 @@ int main()
     std::vector<Pocisk> pociskiWroga;
     Punkty punkty;
 
+    Komunikat komunikatPomoc(czcionka);
+    komunikatPomoc.ustawTekst(
+        "Pomoc:\n\n"
+        "-  <-  ->  - Poruszanie graczem\n"
+        "- Spacja - Strzal\n"
+        "- F1 - Wyswietlnie pomocy\n"
+        "- ESC - Powrot\n\n"
+        "Wcisnij ESC aby wrocic.",
+        sf::Color::Red, sf::Color::White);
+    komunikatPomoc.ustawPozycje(50.f, 30.f);
 
-    // Dodanie przeciwnikow
-    int kolumny = 10;
+    Komunikat komunikatF1(czcionka);
+    komunikatF1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
+    komunikatF1.ustawPozycje(360.f, 10.f);
+
+    // dodanie przeciwnikow
+    int kolumny = 12;
     int wiersze = 4;
     float odstepK = 60.f;
     float odstepW = 40.f;
@@ -468,16 +487,39 @@ int main()
             //     window.close();
             if (gra)
             {
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                if (pomoc)
                 {
-                    gra = false;
-                    rank.dodajWynik("Gracz", punkty.pobierzPunkty());
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+                    {
+                        pomoc = false;
+                        powrotZPomocy = true;
+                        std::cout<<"Zamykam pomoc\n";
+                    }
                 }
-                // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
+                else
                 {
-                    pociskiGracza.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y, -1.f);
-                    czasOdOstatniegoStrzalu = 0.0f;
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::F1))
+                    {
+                        std::cout << "Otwieram pomoc!";
+                        pomoc = true;
+                    }
+                    // do poprawy, wychodzi do menu nawet  w oknie pomocy
+                    else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && !powrotZPomocy)
+                    {
+                        gra = false;
+                        rank.dodajWynik("Gracz", punkty.pobierzPunkty());
+                        //powrotZPomocy = false;
+                    }
+                    else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && powrotZPomocy)
+                    {
+                        powrotZPomocy = false;
+                    }
+                    // po nacisnieciu spacji wystrzal oraz czas miedzy strzalami = minimalnyCzasStrzalu
+                    else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
+                    {
+                        pociskiGracza.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y, -1.f);
+                        czasOdOstatniegoStrzalu = 0.0f;
+                    }
                 }
             }
             else if (wyswietlKomunikat)
@@ -575,7 +617,8 @@ int main()
                 {
                     przegrana = true;
                     wyswietlKomunikat = true;
-                    komunikat.ustawTekst("Przegrale\346! Wcisnij ESC, aby opuscic gre!", sf::Color::Red);
+                    komunikat.ustawTekst("Przegrale\346! Wcisnij ESC, aby opuscic gre!", sf::Color::Red, sf::Color::White);
+                    komunikat.ustawPozycje(120, 250);
                 }
             }
 
@@ -583,7 +626,8 @@ int main()
             {
                 wygrana = true;
                 wyswietlKomunikat = true;
-                komunikat.ustawTekst("Wygrales! Wcisnij ESC, aby opuscic gre", sf::Color::Green);
+                komunikat.ustawTekst("Wygrales! Wcisnij ESC, aby opuscic gre", sf::Color::Green, sf::Color::White);
+                komunikat.ustawPozycje(120, 250);
             }
 
             // jesli dotykaj¥ kraw©dzi to zmiana kierunku
@@ -658,7 +702,8 @@ int main()
                     {
                         przegrana = true;
                         wyswietlKomunikat = true;
-                        komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red);
+                        komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red, sf::Color::White);          
+                        komunikat.ustawPozycje(120, 250);              
                     }
                 }
                 // usuniecie pociskow spoza ekranu
@@ -675,9 +720,14 @@ int main()
 
         // renderowanie
         window.clear();
-        if (gra)
+        if (pomoc)
+        {
+            komunikatPomoc.rysuj(window);
+        }
+        else if (gra)
         {
             gracz.rysuj(window);
+            komunikatF1.rysuj(window);
 
             for (auto &wrog : wrogowie)
             {
