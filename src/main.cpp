@@ -258,7 +258,7 @@ void Punkty::dodaj(int nowyPunkt)
 void Punkty::rysuj(sf::RenderWindow &window, const sf::Font &czcionka)
 {
     tekstPunkty.setFont(czcionka);
-    tekstPunkty.setPosition(760, 20);
+    tekstPunkty.setPosition(760, 10);
     tekstPunkty.setString("Punkty: " + std::to_string(punkty));
     window.draw(tekstPunkty);
 }
@@ -388,6 +388,84 @@ void Komunikat::ustawPozycje(float x, float y)
     tekstKomunikatu.setPosition(x, y);
 }
 
+class UstawTekst
+{
+private:
+    sf::Text tekst;
+    std::string wejscie;
+    sf::RectangleShape tlo;
+
+public:
+    UstawTekst(sf::Font &czcionka, sf::Vector2f rozmiar, sf::Vector2f pozycja);
+    void pobierzZnak(sf::RenderWindow &window);
+    void rysuj(sf::RenderWindow &window);
+    void czysc();
+    sf::Text pobierzTekst();
+};
+
+UstawTekst::UstawTekst(sf::Font &czcionka, sf::Vector2f rozmiar, sf::Vector2f pozycja)
+{
+    tekst.setFont(czcionka);
+    tekst.setCharacterSize(30);
+    tekst.setFillColor(sf::Color::Cyan);
+    tekst.setPosition(pozycja.x + 5.f, pozycja.y + 30.f);
+
+    tlo.setSize(rozmiar);
+    tlo.setFillColor(sf::Color(50, 50, 50, 200));
+    tlo.setOutlineColor(sf::Color::White);
+    tlo.setOutlineThickness(2);
+    tlo.setPosition(pozycja);
+}
+
+void UstawTekst::pobierzZnak(sf::RenderWindow &window)
+{
+    sf::Event event;
+    while (window.pollEvent(event))
+    {
+
+        if (event.type == (sf::Event::Closed) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) || sf::Keyboard::isKeyPressed(sf::Keyboard::Enter))
+        {
+            window.close();
+        }
+        // wywolywane za kazdym razem gdy uzytkownik wpisuje znak
+        if (event.type == sf::Event::TextEntered)
+        {
+            // gdy uzytkowik wcisnie backspace, to usuwa ostatni znak
+            if (event.text.unicode == '\b')
+            {
+                if (!wejscie.empty())
+                {
+                    wejscie.pop_back();
+                }
+            }
+            // jezeli wprowadzony dane to znak ASCII to jest konwertowany na typ char i dodajemy do ciagu input
+            else if (event.text.unicode < 128 && wejscie.size() < 15)
+            {
+                wejscie += static_cast<char>(event.text.unicode);
+            }
+            // aktualizacja tekstu
+            tekst.setString(wejscie);
+        }
+    }
+}
+
+void UstawTekst::rysuj(sf::RenderWindow &window)
+{
+    window.draw(tlo);
+    window.draw(tekst);
+}
+
+void UstawTekst::czysc()
+{
+    wejscie = "";
+    tekst.setString("");
+}
+
+sf::Text UstawTekst::pobierzTekst()
+{
+    return tekst;
+}
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
@@ -398,14 +476,21 @@ int main()
     bool ranking = false;
     bool wyswietlKomunikat = false;
     bool pomoc = false;
-    bool powrotZPomocy = false; //zapobiegniecie przerywania gry przy wychodzeniu z pomocy
+    bool powrotZPomocy = false; // zapobiegniecie przerywania gry przy wychodzeniu z pomocy
+    bool podajNick = false;
 
     // zaladowanie czcionki
     sf::Font czcionka;
     if (!czcionka.loadFromFile("Pricedown Bl.otf"))
     {
         std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
-        return 0;
+        return -1;
+    }
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf"))
+    {
+        std::cout << "Nie udalo sie zaladowac" << std::endl;
+        return -1;
     }
 
     sf::Texture teksturaSerca;
@@ -439,6 +524,9 @@ int main()
     Komunikat komunikatF1(czcionka);
     komunikatF1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
     komunikatF1.ustawPozycje(360.f, 10.f);
+
+    //obiekt do pobierania tekstu
+    UstawTekst ustawTekst(czcionka, sf::Vector2f(360.f, 100.f), sf::Vector2f(20.f, 50.f));
 
     // dodanie przeciwnikow
     int kolumny = 12;
@@ -493,7 +581,7 @@ int main()
                     {
                         pomoc = false;
                         powrotZPomocy = true;
-                        std::cout<<"Zamykam pomoc\n";
+                        std::cout << "Zamykam pomoc\n";
                     }
                 }
                 else
@@ -507,8 +595,8 @@ int main()
                     else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && !powrotZPomocy)
                     {
                         gra = false;
-                        rank.dodajWynik("Gracz", punkty.pobierzPunkty());
-                        //powrotZPomocy = false;
+                        rank.dodajWynik(ustawTekst.pobierzTekst().getString(), punkty.pobierzPunkty());
+                        // powrotZPomocy = false;
                     }
                     else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && powrotZPomocy)
                     {
@@ -539,6 +627,7 @@ int main()
                     ranking = false;
                 }
             }
+            // menu
             else
             {
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
@@ -551,6 +640,7 @@ int main()
                     if (opcja == 0)
                     {
                         gra = true;
+                        ustawTekst.czysc(); //czyszczenie pola do wpisywania
                         // reset stanu gracza
                         gracz = Gracz(teksturaSerca);
                         wrogowie.clear();
@@ -702,8 +792,9 @@ int main()
                     {
                         przegrana = true;
                         wyswietlKomunikat = true;
-                        komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red, sf::Color::White);          
-                        komunikat.ustawPozycje(120, 250);              
+                        komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red, sf::Color::White);
+                        komunikat.ustawPozycje(120, 250);
+                        podajNick = true;
                     }
                 }
                 // usuniecie pociskow spoza ekranu
@@ -716,6 +807,18 @@ int main()
                     ++it;
                 }
             }
+        }
+        else if (podajNick)
+        {
+            sf::RenderWindow oknoWprowadzania(sf::VideoMode(400.f, 200.f), "SFML Text Input");
+            while (oknoWprowadzania.isOpen())
+            {
+                ustawTekst.pobierzZnak(oknoWprowadzania);
+                oknoWprowadzania.clear();
+                ustawTekst.rysuj(oknoWprowadzania);
+                oknoWprowadzania.display();
+            }
+            podajNick = false;
         }
 
         // renderowanie
