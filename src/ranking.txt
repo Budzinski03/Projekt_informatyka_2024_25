@@ -1,1 +1,2 @@
-mateusz 320
+0 0
+Gracz 0
