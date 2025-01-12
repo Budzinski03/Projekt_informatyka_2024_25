@@ -1,2 +1,10 @@
-0 0
-Gracz 0
+Mateusz 400
+Lukasz 400
+Gracz 400
+Gracz 400
+Gracz 400
+Gracz 400
+Gracz 400
+Gracz 400
+Gracz 400
+Gracz 400
