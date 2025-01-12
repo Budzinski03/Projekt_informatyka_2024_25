@@ -83,10 +83,9 @@ private:
     float predkosc;
     int liczbaZyc;
     std::vector<sf::Sprite> serca;
-
 };
 
-Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(5)
+Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(2)
 {
     ksztalt.setSize(sf::Vector2f(50, 20));
     ksztalt.setFillColor(sf::Color::Green);
@@ -143,10 +142,8 @@ void Gracz::stracZycie()
 {
     if (liczbaZyc > 0)
         liczbaZyc--;
-        serca.pop_back();
+    serca.pop_back();
 }
-
-
 
 int Gracz::pobierzLiczbeZyc() const
 {
@@ -390,10 +387,10 @@ int main()
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
 
     bool gra = false; // flaga gry
-    bool przegrana = false;
-    bool wygrana = false;
+    bool koniecGry = false;
     bool ranking = false;
-    bool wyswietlKomunikat = false;
+    bool pomoc = false;
+    bool powrotZPomocy = false;
 
     // zaladowanie czcionki
     sf::Font czcionka;
@@ -406,7 +403,7 @@ int main()
     sf::Texture teksturaSerca;
     if (!teksturaSerca.loadFromFile("../assets/hearth.png"))
     {
-        std::cout<<"Nie udalo sie zaladowac obrazka serca!"<<std::endl;
+        std::cout << "Nie udalo sie zaladowac obrazka serca!" << std::endl;
         return -1;
     }
 
@@ -419,7 +416,6 @@ int main()
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
     Punkty punkty;
-
 
     // Dodanie przeciwnikow
     int kolumny = 10;
@@ -479,14 +475,16 @@ int main()
                     pociskiGracza.emplace_back(gracz.pobierzPozycje().x + 22.5f, gracz.pobierzPozycje().y, -1.f);
                     czasOdOstatniegoStrzalu = 0.0f;
                 }
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::F1) && !koniecGry)
+                {
+                    pomoc = true;
+                }
             }
-            else if (wyswietlKomunikat)
+            else if (koniecGry)
             {
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
                 {
-                    wyswietlKomunikat = false;
-                    przegrana = false;
-                    wygrana = false;
+                    koniecGry = false;
                     gra = false;
                 }
             }
@@ -496,6 +494,11 @@ int main()
                 {
                     ranking = false;
                 }
+            }
+            else if (pomoc && sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
+            {
+                pomoc = false;
+                std::cout<<"ZP\n";
             }
             else
             {
@@ -527,8 +530,7 @@ int main()
                         clock.restart();
                         czasOdOstatniegoStrzalu = 0.f;
                         dotknietoKrawedziWczesniej = false;
-                        przegrana = false;
-                        wygrana = false;
+                        koniecGry = false;
                     }
                     else if (opcja == 1)
                     {
@@ -542,7 +544,7 @@ int main()
             }
         }
         // aktualizacja stanu gry //gdy gra jest aktywna i komunikat nie jest wyswietlany
-        if (gra && !wyswietlKomunikat)
+        if (gra && !koniecGry)
         {
             sf::Time deltaTime = clock.restart();
             gracz.steruj(deltaTime.asSeconds());
@@ -573,16 +575,14 @@ int main()
                 // sprawdzenie czy ktorys wrog dotarl do dolnej krawedzi
                 if (wrog.pobierzPozycje().y + 20 >= 600)
                 {
-                    przegrana = true;
-                    wyswietlKomunikat = true;
+                    koniecGry = true;
                     komunikat.ustawTekst("Przegrale\346! Wcisnij ESC, aby opuscic gre!", sf::Color::Red);
                 }
             }
 
             if (wrogowie.empty())
             {
-                wygrana = true;
-                wyswietlKomunikat = true;
+                koniecGry = true;
                 komunikat.ustawTekst("Wygrales! Wcisnij ESC, aby opuscic gre", sf::Color::Green);
             }
 
@@ -656,8 +656,7 @@ int main()
 
                     if (gracz.pobierzLiczbeZyc() == 0)
                     {
-                        przegrana = true;
-                        wyswietlKomunikat = true;
+                        koniecGry = true;
                         komunikat.ustawTekst("Przegrales! Wcisnij ESC aby opuscic gre!", sf::Color::Red);
                     }
                 }
@@ -694,20 +693,22 @@ int main()
             {
                 pocisk.rysuj(window);
             }
+
+            // komunikaty o wygranej lub prezgranej
+            if (koniecGry)
+            {
+                komunikat.rysuj(window);
+            }
         }
         else if (ranking)
         {
             rank.rysuj(window, czcionka);
         }
-        else if (!wyswietlKomunikat)
+        else if (!koniecGry)
         {
             menu.rysuj(window);
         }
-        // komunikaty o wygranej lub prezgranej
-        if (wyswietlKomunikat)
-        {
-            komunikat.rysuj(window);
-        }
+
         window.display();
     }
 
