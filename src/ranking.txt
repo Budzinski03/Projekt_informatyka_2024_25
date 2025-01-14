@@ -1,10 +1,8 @@
 Mateusz 400
 Lukasz 400
 Gracz 400
-Gracz 400
-Gracz 400
-Gracz 400
-Gracz 400
-Gracz 70
-Gracz 70
-Gracz 50
+kacper 60
+kuba 20
+matis 10
+oke 0
+Gracz 0
