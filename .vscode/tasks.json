@@ -7,20 +7,19 @@
             "command": "g++",
             "args": [
                 "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}/${fileBasenameNoExtension}.exe",
-                "-I",
-                "C:/msys64/mingw64/include",
-                "-L",
-                "C:/msys64/mingw64/lib",
-                "-lsfml-graphics",
-                "-lsfml-window",
-                "-lsfml-system"
+                "src/main.cpp",                // Główna aplikacja
+                "src/klasy.cpp",               // Inne pliki źródłowe
+                "-I", "include",               // Ścieżka do katalogu z nagłówkami
+                "-I", "C:/msys64/mingw64/include", // Dodatkowa ścieżka do nagłówków SFML
+                "-L", "C:/msys64/mingw64/lib",     // Ścieżka do bibliotek SFML
+                "-lsfml-graphics", 
+                "-lsfml-window", 
+                "-lsfml-system",
+                "-o", "src/${fileBasenameNoExtension}.exe"  // Wynikowy plik wykonywalny w folderze src
             ],
             "group": {
-                "kind" : "build",
-                "isDefault": true,
+                "kind": "build",
+                "isDefault": true
             },
             "problemMatcher": [
                 "$gcc"

@@ -1,8 +1,2 @@
-Mateusz 400
-Lukasz 400
-Gracz 400
-kacper 60
-kuba 20
-matis 10
-oke 0
+mati 10
 Gracz 0
