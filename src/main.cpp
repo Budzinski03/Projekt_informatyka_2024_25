@@ -20,37 +20,60 @@ struct Komunikaty
     Komunikat F1;
 };
 
+struct Zasoby
+{
+    sf::Font czcionka;
+    sf::Texture teksturaSerca;
+    sf::SoundBuffer bufferStrzalu;
+    sf::Sound dzwiekStrzalu;
+};
+
+Zasoby zasoby;
+
+// flagi
 bool graWstrzymana = false;
 bool pomocAktywna = false;
 bool koniecGry = false;
 bool wyjscieAktywne = false;
-sf::Font czcionka;
-sf::Texture teksturaSerca;
-sf::SoundBuffer bufferStrzalu;
+
+// parametry
+float kierunek = 1.0f;      // predkosc wrogow w poziomie
+float interwalRuchu = 2.5f; // wrogowie przesuwani co 1s
+float czasOdOstatniegoRuchu = 0.0f;
+float czasOdOstatniegoStrzalu = 1.5f;
+float minimalnyCzasStrzalu = 1.0f;
+float czasOdOstatniegoStrzaluWroga = 0.f;
+float minimalnyCzasStrzaluWroga = 1.0f;
+
+// parametry wrogow
+int kolumny = 8;
+int wiersze = 4;
+float odstepK = 80.f;
+float odstepW = 60.f;
 
 // ladowanie czcionki i tekstury
-bool zaladuj(sf::Font &czcionka, sf::Texture &teksturaSerca, sf::SoundBuffer &bufferStrzalu, sf::Sound &dzwiekStrzalu)
+bool zaladuj(Zasoby &zasoby)
 {
-    if (!czcionka.loadFromFile("../assets/Pricedown Bl.otf"))
+    if (!zasoby.czcionka.loadFromFile("../assets/Pricedown Bl.otf"))
     {
         std::cout << "Nie udalo sie zaladowac czcionki!" << std::endl;
         return false;
     }
-    if (!teksturaSerca.loadFromFile("../assets/serce.png"))
+    if (!zasoby.teksturaSerca.loadFromFile("../assets/serce.png"))
     {
         std::cout << "Nie udalo sie zaladowac obrazka serca!" << std::endl;
         return false;
     }
-    if (!bufferStrzalu.loadFromFile("../assets/strzal.wav"))
+    if (!zasoby.bufferStrzalu.loadFromFile("../assets/strzal.wav"))
     {
         std::cout << "Nie udalo sie zaladowac dzwieku strzalu!" << std::endl;
         return false;
     }
-    dzwiekStrzalu.setBuffer(bufferStrzalu);
+    zasoby.dzwiekStrzalu.setBuffer(zasoby.bufferStrzalu);
     return true;
 }
 
-void wyswietlMenu(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, bool &graTrwa, Menu &menu)
+void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &menu)
 {
     sf::Event event;
     while (window.pollEvent(event))
@@ -90,11 +113,9 @@ void wyswietlMenu(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, b
     window.display();
 }
 
-void wyswietlRanking(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, bool &GraTrwa, Ranking &ranking)
+void wyswietlRanking(sf::RenderWindow &window, StanGry &stan, bool &GraTrwa, Ranking &ranking)
 {
-
     sf::Event event;
-
     while (window.pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
@@ -116,7 +137,7 @@ void wyswietlRanking(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan
     window.display();
 }
 
-void przesunWrogow(std::vector<Wrog> &wrogowie, float &czasOdOstatniegoRuchu, float interwalRuchu, float &kierunek, float odstepK, float odstepW, bool &zmienKierunek, bool &przesunietoPredzej)
+void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przesunietoPredzej)
 {
     // ruch wrogow co okreslony czas
     if (czasOdOstatniegoRuchu >= interwalRuchu)
@@ -183,7 +204,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, float &czasOdOstatniegoRuchu, fl
     }
 }
 
-void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, float &deltaTime, Gracz &gracz, float &czasOdOstatniegoStrzaluWroga, float &minimalnyCzasStrzaluWroga, std::vector<Wrog> &wrogowie)
+void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, float &deltaTime, Gracz &gracz, std::vector<Wrog> &wrogowie)
 {
     // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
     for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();)
@@ -263,7 +284,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
     }
 }
 
-bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bool &koniecGry, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, float &czasOdOstatniegoStrzalu, float &minimalnyCzasStrzalu, Gracz &gracz, sf::Sound &dzwiekStrzalu, std::vector<Pocisk> &pociskiGracza)
+bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, Gracz &gracz, std::vector<Pocisk> &pociskiGracza)
 {
     while (window.pollEvent(event))
     {
@@ -331,7 +352,7 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bo
             // strzaly gracza
             if (!graWstrzymana && event.key.code == sf::Keyboard::Space && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
             {
-                dzwiekStrzalu.play();
+                zasoby.dzwiekStrzalu.play();
                 float x = gracz.pobierzPozycje().x + gracz.pobierzRozmiar().x / 2 - 2.5f;
                 float y = gracz.pobierzPozycje().y;
                 pociskiGracza.emplace_back(x, y, -1.0f); // -1.0f - leci do gory
@@ -342,21 +363,16 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bo
     return true;
 }
 
-void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, bool &graTrwa, sf::Texture teksturaSerca, Komunikaty &komunikaty, Ranking &ranking, sf::Sound &dzwiekStrzalu)
+void uruchomGre(sf::RenderWindow &window,StanGry &stan, bool &graTrwa, Komunikaty &komunikaty, Ranking &ranking)
 {
-    Gracz gracz(teksturaSerca);
+    Gracz gracz(zasoby.teksturaSerca);
     std::vector<Wrog> wrogowie;
     std::vector<Wrog> wrogowieB;
     std::vector<Wrog> wrogowieC;
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
-    UstawTekst ustawTekst(czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 300)); // dodanie obiektu do wpisywania tekstu
+    UstawTekst ustawTekst(zasoby.czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 400)); // dodanie obiektu do wpisywania tekstu
 
-    // parametry wrogow
-    int kolumny = 8;
-    int wiersze = 4;
-    float odstepK = 80.f;
-    float odstepW = 60.f;
     // tworzenie wrogow
     for (int kolumna = 0; kolumna < kolumny; ++kolumna)
     {
@@ -369,13 +385,6 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
     }
 
     sf::Clock zegar;
-    float kierunek = 1.0f;      // predkosc wrogow w poziomie
-    float interwalRuchu = 2.5f; // wrogowie przesuwani co 1s
-    float czasOdOstatniegoRuchu = 0.0f;
-    float czasOdOstatniegoStrzalu = 1.5f;
-    float minimalnyCzasStrzalu = 1.0f;
-    float czasOdOstatniegoStrzaluWroga = 0.f;
-    float minimalnyCzasStrzaluWroga = 1.0f;
     bool zmienKierunek = false;
     bool przesunietoPredzej = false;
 
@@ -394,7 +403,7 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
         }
 
         sf::Event event;
-        if (!obslugaZdarzen(window, event, graTrwa, koniecGry, ustawTekst, ranking, graWstrzymana, stan, czasOdOstatniegoStrzalu, minimalnyCzasStrzalu, gracz, dzwiekStrzalu, pociskiGracza))
+        if (!obslugaZdarzen(window, event, graTrwa,  ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza))
         {
             std::string nick = ustawTekst.pobierzWejscie();
             ranking.dodajWynik(nick, gracz.pobierzPunkty());
@@ -409,9 +418,9 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
         // logika obiektow
         if (!graWstrzymana)
         {
-            przesunWrogow(wrogowie, czasOdOstatniegoRuchu, interwalRuchu, kierunek, odstepK, odstepW, zmienKierunek, przesunietoPredzej);
+            przesunWrogow(wrogowie, zmienKierunek, przesunietoPredzej);
 
-            aktualizujPociski(pociskiGracza, pociskiWroga, deltaTime, gracz, czasOdOstatniegoStrzaluWroga, minimalnyCzasStrzaluWroga, wrogowie);
+            aktualizujPociski(pociskiGracza, pociskiWroga, deltaTime, gracz, wrogowie);
 
             // sterowanie gracza
             gracz.steruj(deltaTime);
@@ -419,7 +428,7 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
 
         // Rysowanie
         window.clear();
-        gracz.rysuj(window, czcionka);
+        gracz.rysuj(window, zasoby.czcionka);
         komunikaty.F1.rysuj(window);
         for (const auto &wrog : wrogowie)
         {
@@ -456,19 +465,16 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
 
 int main()
 {
-    sf::Font czcionka;
-    sf::Texture teksturaSerca;
-    sf::Sound dzwiekStrzalu;
-    zaladuj(czcionka, teksturaSerca, bufferStrzalu, dzwiekStrzalu);
+    zaladuj(zasoby);
 
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
 
     // Inicjalizacja komunikat?w
     Komunikaty komunikaty = {
-        Komunikat(czcionka),
-        Komunikat(czcionka),
-        Komunikat(czcionka),
-        Komunikat(czcionka)};
+        Komunikat(zasoby.czcionka),
+        Komunikat(zasoby.czcionka),
+        Komunikat(zasoby.czcionka),
+        Komunikat(zasoby.czcionka)};
 
     komunikaty.pomoc.ustawTekst(
         "Pomoc:\n\n"
@@ -480,11 +486,11 @@ int main()
         sf::Color::Black, sf::Color::Blue);
     komunikaty.pomoc.ustawPozycje(50.f, 30.f);
 
-    komunikaty.koniecGry.ustawTekst("                  koniec gry\n\n\nWpisz swoj nick i wcisnij ENTER", sf::Color::Red, sf::Color::Black);
-    komunikaty.koniecGry.ustawPozycje(180, 200);
+    komunikaty.koniecGry.ustawTekst("                     koniec gry\n\n\nWpisz swoj nick i wcisnij ENTER", sf::Color::Red, sf::Color::Black);
+    komunikaty.koniecGry.ustawPozycje(180, 120);
 
     komunikaty.wyjscie.ustawTekst("Czy na pewno chcesz wyjsc? (T/N)", sf::Color::White, sf::Color::Black);
-    komunikaty.wyjscie.ustawPozycje(60, 250);
+    komunikaty.wyjscie.ustawPozycje(150, 250);
 
     komunikaty.F1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
     komunikaty.F1.ustawPozycje(360.f, 10.f);
@@ -492,21 +498,21 @@ int main()
     StanGry stan = MENU;
     bool graTrwa = true;
 
-    Menu menu(czcionka);
-    Ranking ranking("ranking.txt", czcionka);
+    Menu menu(zasoby.czcionka);
+    Ranking ranking("ranking.txt", zasoby.czcionka);
 
     while (graTrwa)
     {
         switch (stan)
         {
         case MENU:
-            wyswietlMenu(window, czcionka, stan, graTrwa, menu);
+            wyswietlMenu(window, stan, graTrwa, menu);
             break;
         case RANKING:
-            wyswietlRanking(window, czcionka, stan, graTrwa, ranking);
+            wyswietlRanking(window, stan, graTrwa, ranking);
             break;
         case GRA:
-            uruchomGre(window, czcionka, stan, graTrwa, teksturaSerca, komunikaty, ranking, dzwiekStrzalu);
+            uruchomGre(window, stan, graTrwa, komunikaty, ranking);
             break;
         default:
             break;
