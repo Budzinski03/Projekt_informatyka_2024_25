@@ -141,7 +141,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, float &czasOdOstatniegoRuchu, fl
                 zmienKierunek = true;
                 break;
             }
-            // jezeli dotr¥ do doˆu koniec gry
+            // jezeli dotr? do do?u koniec gry
             if (wrog.pobierzKsztalt().getPosition().y + wrog.pobierzKsztalt().getSize().y >= 550)
             {
                 koniecGry = true;
@@ -183,7 +183,87 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, float &czasOdOstatniegoRuchu, fl
     }
 }
 
-void obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bool &koniecGry, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, float &czasOdOstatniegoStrzalu, float &minimalnyCzasStrzalu, Gracz &gracz, sf::Sound &dzwiekStrzalu, std::vector<Pocisk> &pociskiGracza)
+void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, float &deltaTime, Gracz &gracz, float &czasOdOstatniegoStrzaluWroga, float &minimalnyCzasStrzaluWroga, std::vector<Wrog> &wrogowie)
+{
+    // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
+    for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();)
+    { // ruch posisku
+        pociskIt->ruszaj(deltaTime);
+
+        bool wrogZniszczony = false;
+
+        for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
+        {
+            // Sprawdzenie kolizji pocisku z wrogiem
+            if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), sf::Vector2f(50, 25))))
+            {
+                // jesli kolizja to usuwa wroga
+                wrogIt = wrogowie.erase(wrogIt);
+                wrogZniszczony = true;
+                gracz.dodajPunkty(10); // Zakomentowana linia dodania punkt?w
+                break;
+            }
+            else
+            {
+                ++wrogIt;
+            }
+        }
+
+        // usuwanie pociskow po zderzeniu lub ktore wyszly poza zakres
+        if (wrogZniszczony || pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
+        {
+            pociskIt = pociskiGracza.erase(pociskIt);
+        }
+        else
+        {
+            ++pociskIt;
+        }
+    }
+
+    // tworzenie pociskow wroga
+    if (czasOdOstatniegoStrzaluWroga >= minimalnyCzasStrzaluWroga && !wrogowie.empty())
+    {
+        int iloscWrogow = wrogowie.size();
+        for (int i = 0; i < iloscWrogow / 10 + 2; i++)
+        {
+            int indeksWroga = rand() % wrogowie.size();
+            sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition();
+            pociskiWroga.emplace_back(pozycjaWroga.x + 20.f, pozycjaWroga.y + 20.f, 1.f);
+            czasOdOstatniegoStrzaluWroga = 0.f;
+        }
+    }
+
+    // aktualizaja pociskow wrogow
+    for (auto pociskIt = pociskiWroga.begin(); pociskIt != pociskiWroga.end();)
+    {
+        pociskIt->ruszaj(deltaTime);
+
+        // sprawdzenie kolizji miedzy pociskami a graczem
+        if (pociskIt->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), sf::Vector2f(60, 30))))
+        {
+            // jezeli pocisk trafi to gracz traci zycie
+            gracz.stracZycie();
+            pociskIt = pociskiWroga.erase(pociskIt);
+
+            if (gracz.pobierzLiczbeZyc() == 0)
+            {
+                koniecGry = true;
+                graWstrzymana = true;
+            }
+        }
+        // usuniecie pociskow spoza ekranu
+        else if (pociskIt->pobierzObszar().top > 600)
+        {
+            pociskIt = pociskiWroga.erase(pociskIt);
+        }
+        else
+        {
+            ++pociskIt;
+        }
+    }
+}
+
+bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bool &koniecGry, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, float &czasOdOstatniegoStrzalu, float &minimalnyCzasStrzalu, Gracz &gracz, sf::Sound &dzwiekStrzalu, std::vector<Pocisk> &pociskiGracza)
 {
     while (window.pollEvent(event))
     {
@@ -198,18 +278,9 @@ void obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bo
             // pobranie znakow od uzytkownika
             ustawTekst.pobierzZnak(window);
 
-            // Je˜li wci˜ni©to Enter
+            // Jesli wcicnisto Enter
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !ustawTekst.pobierzWejscie().empty())
-            {
-                std::string nick = ustawTekst.pobierzWejscie();
-                ranking.dodajWynik(nick, gracz.pobierzPunkty());
-
-                // reset stanu gry, powrot do menu
-                koniecGry = false;
-                graWstrzymana = false;
-                stan = StanGry::MENU;
-                return;
-            }
+                return false;
         }
 
         if (event.type == sf::Event::KeyPressed)
@@ -239,18 +310,9 @@ void obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bo
                     ustawTekst.pobierzZnak(window);
                     ustawTekst.czysc();
 
-                    // Je˜li wci˜ni©to Enter
+                    // Jesli wcisnieto Enter
                     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !ustawTekst.pobierzWejscie().empty())
-                    {
-                        std::string nick = ustawTekst.pobierzWejscie();
-                        ranking.dodajWynik(nick, gracz.pobierzPunkty());
-
-                        // reset stanu gry, powrot do menu
-                        koniecGry = false;
-                        graWstrzymana = false;
-                        stan = StanGry::MENU;
-                        return;
-                    }
+                        return false;
                 }
                 // wznowienie gry
                 else if (event.key.code == sf::Keyboard::N)
@@ -277,6 +339,7 @@ void obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bo
             }
         }
     }
+    return true;
 }
 
 void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, bool &graTrwa, sf::Texture teksturaSerca, Komunikaty &komunikaty, Ranking &ranking, sf::Sound &dzwiekStrzalu)
@@ -287,7 +350,7 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
     std::vector<Wrog> wrogowieC;
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
-    UstawTekst ustawTekst(czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 300)); // Dodajemy instancj© UstawTekst
+    UstawTekst ustawTekst(czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 300)); // dodanie obiektu do wpisywania tekstu
 
     // parametry wrogow
     int kolumny = 8;
@@ -331,89 +394,24 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
         }
 
         sf::Event event;
-        obslugaZdarzen(window, event, graTrwa, koniecGry, ustawTekst, ranking, graWstrzymana, stan, czasOdOstatniegoStrzalu, minimalnyCzasStrzalu, gracz, dzwiekStrzalu,pociskiGracza);
+        if (!obslugaZdarzen(window, event, graTrwa, koniecGry, ustawTekst, ranking, graWstrzymana, stan, czasOdOstatniegoStrzalu, minimalnyCzasStrzalu, gracz, dzwiekStrzalu, pociskiGracza))
+        {
+            std::string nick = ustawTekst.pobierzWejscie();
+            ranking.dodajWynik(nick, gracz.pobierzPunkty());
 
-            // logika obiektow
-            if (!graWstrzymana)
+            // reset stanu gry, powrot do menu
+            koniecGry = false;
+            graWstrzymana = false;
+            stan = StanGry::MENU;
+            return;
+        }
+
+        // logika obiektow
+        if (!graWstrzymana)
         {
             przesunWrogow(wrogowie, czasOdOstatniegoRuchu, interwalRuchu, kierunek, odstepK, odstepW, zmienKierunek, przesunietoPredzej);
 
-            // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
-            for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();)
-            { // ruch posisku
-                pociskIt->ruszaj(deltaTime);
-
-                bool wrogZniszczony = false;
-
-                for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
-                {
-                    // Sprawdzenie kolizji pocisku z wrogiem
-                    if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), sf::Vector2f(50, 25))))
-                    {
-                        // jesli kolizja to usuwa wroga
-                        wrogIt = wrogowie.erase(wrogIt);
-                        wrogZniszczony = true;
-                        gracz.dodajPunkty(10); // Zakomentowana linia dodania punkt¢w
-                        break;
-                    }
-                    else
-                    {
-                        ++wrogIt;
-                    }
-                }
-
-                // usuwanie pociskow po zderzeniu lub ktore wyszly poza zakres
-                if (wrogZniszczony || pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
-                {
-                    pociskIt = pociskiGracza.erase(pociskIt);
-                }
-                else
-                {
-                    ++pociskIt;
-                }
-            }
-
-            // tworzenie pociskow wroga
-            if (czasOdOstatniegoStrzaluWroga >= minimalnyCzasStrzaluWroga && !wrogowie.empty())
-            {
-                int iloscWrogow = wrogowie.size();
-                for (int i = 0; i < iloscWrogow / 10 + 2; i++)
-                {
-                    int indeksWroga = rand() % wrogowie.size();
-                    sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition();
-                    pociskiWroga.emplace_back(pozycjaWroga.x + 20.f, pozycjaWroga.y + 20.f, 1.f);
-                    czasOdOstatniegoStrzaluWroga = 0.f;
-                }
-            }
-
-            // aktualizaja pociskow wrogow
-            for (auto pociskIt = pociskiWroga.begin(); pociskIt != pociskiWroga.end();)
-            {
-                pociskIt->ruszaj(deltaTime);
-
-                // sprawdzenie kolizji miedzy pociskami a graczem
-                if (pociskIt->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), sf::Vector2f(60, 30))))
-                {
-                    // jezeli pocisk trafi to gracz traci zycie
-                    gracz.stracZycie();
-                    pociskIt = pociskiWroga.erase(pociskIt);
-
-                    if (gracz.pobierzLiczbeZyc() == 0)
-                    {
-                        koniecGry = true;
-                        graWstrzymana = true;
-                    }
-                }
-                // usuniecie pociskow spoza ekranu
-                else if (pociskIt->pobierzObszar().top > 600)
-                {
-                    pociskIt = pociskiWroga.erase(pociskIt);
-                }
-                else
-                {
-                    ++pociskIt;
-                }
-            }
+            aktualizujPociski(pociskiGracza, pociskiWroga, deltaTime, gracz, czasOdOstatniegoStrzaluWroga, minimalnyCzasStrzaluWroga, wrogowie);
 
             // sterowanie gracza
             gracz.steruj(deltaTime);
@@ -465,7 +463,7 @@ int main()
 
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
 
-    // Inicjalizacja komunikat¢w
+    // Inicjalizacja komunikat?w
     Komunikaty komunikaty = {
         Komunikat(czcionka),
         Komunikat(czcionka),
