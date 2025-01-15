@@ -148,10 +148,28 @@ int Gracz::pobierzPunkty() const
 }
 
 
-Wrog::Wrog(float x, float y)
+Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false)
 {
     ksztalt.setSize(sf::Vector2f(50, 25));
-    ksztalt.setFillColor(sf::Color::Red);
+    switch(typ)
+    {
+        case 1:
+        ksztalt.setFillColor(sf::Color::Red);
+        wartoscPunktow = 30;
+        break;
+        case 2:
+        ksztalt.setFillColor(sf::Color::Green);
+        wartoscPunktow = 20;
+        break;
+        case 3:
+        ksztalt.setFillColor(sf::Color::Blue);
+        wartoscPunktow = 10;
+        break;
+        default:
+        ksztalt.setFillColor(sf::Color::White);
+        wartoscPunktow = 5;
+        break;
+    }
     ksztalt.setPosition(x, y);
 }
 
@@ -173,6 +191,11 @@ void Wrog::ustawPozycje(float x, float y)
 void Wrog::przesun(float dx, float dy)
 {
     ksztalt.move(dx, dy);
+}
+
+int Wrog::pobierzPunkty()
+{
+    return wartoscPunktow;
 }
 
 

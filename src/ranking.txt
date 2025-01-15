@@ -1,10 +1,1 @@
-Gracz 320
-matueszzs 240
-robcio 220
-mateusz 170
-matix 160
-maton 140
-mateusz 120
-mateusz 110
-paskudnie 110
-mateusz 100
+mateusz 560

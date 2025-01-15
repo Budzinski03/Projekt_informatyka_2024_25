@@ -42,14 +42,17 @@ private:
 class Wrog
 {
 public:
-    Wrog(float x, float y);
+    Wrog(float x, float y, int typ);
     void rysuj(sf::RenderWindow &window) const;
     const sf::RectangleShape &pobierzKsztalt() const; // zwraca referencję
     void ustawPozycje(float x, float y);
     void przesun(float dx, float dy);
+    int pobierzPunkty();
+    bool czyStrzelil; //flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
 
 private:
     sf::RectangleShape ksztalt;
+    int typ; //rodzaj wroga
     int wartoscPunktow;
 };
 

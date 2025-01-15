@@ -46,8 +46,8 @@ float czasOdOstatniegoStrzaluWroga = 0.f;
 float minimalnyCzasStrzaluWroga = 1.0f;
 
 // parametry wrogow
-int kolumny = 8;
-int wiersze = 4;
+int kolumny = 8; 
+int wiersze = 4; 
 float odstepK = 80.f;
 float odstepW = 60.f;
 
@@ -178,7 +178,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
             // przesuniecie w dol
             for (auto &wrog : wrogowie)
             {
-                wrog.przesun(0.0f, odstepW);
+                wrog.przesun(0.0f, odstepW/2);
             }
         }
         else
@@ -218,10 +218,10 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
             // Sprawdzenie kolizji pocisku z wrogiem
             if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), sf::Vector2f(50, 25))))
             {
+                gracz.dodajPunkty(wrogIt->pobierzPunkty()); // dodanie punktow w zaleznosci od wartosci wroga
                 // jesli kolizja to usuwa wroga
                 wrogIt = wrogowie.erase(wrogIt);
                 wrogZniszczony = true;
-                gracz.dodajPunkty(10); // Zakomentowana linia dodania punkt?w
                 break;
             }
             else
@@ -248,10 +248,19 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
         for (int i = 0; i < iloscWrogow / 10 + 2; i++)
         {
             int indeksWroga = rand() % wrogowie.size();
-            sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition();
-            pociskiWroga.emplace_back(pozycjaWroga.x + 20.f, pozycjaWroga.y + 20.f, 1.f);
-            czasOdOstatniegoStrzaluWroga = 0.f;
+            if (!wrogowie[indeksWroga].czyStrzelil)
+            {
+                sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition();
+                pociskiWroga.emplace_back(pozycjaWroga.x + 20.f, pozycjaWroga.y + 20.f, 1.f);
+                wrogowie[indeksWroga].czyStrzelil = true; //zapobiegniecie podwojnemu wylosowaniu i wystrzeleniu
+                czasOdOstatniegoStrzaluWroga = 0.f;
+            }
         }
+    }
+    // reset flagi czyStrzelil dla wszystkich wrogow
+    for (auto &wrog : wrogowie)
+    {
+        wrog.czyStrzelil = false;
     }
 
     // aktualizaja pociskow wrogow
@@ -363,12 +372,10 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, Us
     return true;
 }
 
-void uruchomGre(sf::RenderWindow &window,StanGry &stan, bool &graTrwa, Komunikaty &komunikaty, Ranking &ranking)
+void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunikaty &komunikaty, Ranking &ranking)
 {
     Gracz gracz(zasoby.teksturaSerca);
     std::vector<Wrog> wrogowie;
-    std::vector<Wrog> wrogowieB;
-    std::vector<Wrog> wrogowieC;
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
     UstawTekst ustawTekst(zasoby.czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 400)); // dodanie obiektu do wpisywania tekstu
@@ -380,7 +387,14 @@ void uruchomGre(sf::RenderWindow &window,StanGry &stan, bool &graTrwa, Komunikat
         {
             float x = kolumna * odstepK + 95.f; // odstep miedzy kolumnami
             float y = rzad * odstepW + 80;      // odstep miedzy rzedami
-            wrogowie.emplace_back(x, y);
+            int typ;
+            if (rzad == 0)
+                typ = 1;
+            else if (rzad == 1)
+                typ = 2;
+            else
+                typ = 3;
+            wrogowie.emplace_back(x, y, typ);
         }
     }
 
@@ -403,7 +417,7 @@ void uruchomGre(sf::RenderWindow &window,StanGry &stan, bool &graTrwa, Komunikat
         }
 
         sf::Event event;
-        if (!obslugaZdarzen(window, event, graTrwa,  ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza))
+        if (!obslugaZdarzen(window, event, graTrwa, ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza))
         {
             std::string nick = ustawTekst.pobierzWejscie();
             ranking.dodajWynik(nick, gracz.pobierzPunkty());
