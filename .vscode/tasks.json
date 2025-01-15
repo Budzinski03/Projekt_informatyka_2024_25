@@ -15,6 +15,7 @@
                 "-lsfml-graphics", 
                 "-lsfml-window", 
                 "-lsfml-system",
+                "-lsfml-audio",
                 "-o", "src/${fileBasenameNoExtension}.exe"  // Wynikowy plik wykonywalny w folderze src
             ],
             "group": {

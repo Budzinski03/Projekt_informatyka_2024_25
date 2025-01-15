@@ -44,12 +44,13 @@ class Wrog
 public:
     Wrog(float x, float y);
     void rysuj(sf::RenderWindow &window) const;
-    const sf::RectangleShape &pobierzKsztalt() const; // Zwraca referencję
+    const sf::RectangleShape &pobierzKsztalt() const; // zwraca referencję
     void ustawPozycje(float x, float y);
     void przesun(float dx, float dy);
 
 private:
     sf::RectangleShape ksztalt;
+    int wartoscPunktow;
 };
 
 

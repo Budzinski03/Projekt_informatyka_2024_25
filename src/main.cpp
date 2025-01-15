@@ -3,6 +3,7 @@
 #include <vector>
 #include <fstream>
 #include "klasy.h"
+#include <sfml/Audio.hpp>
 
 enum StanGry
 {
@@ -14,20 +15,21 @@ enum StanGry
 struct Komunikaty
 {
     Komunikat pomoc;
-    Komunikat przegrana;
+    Komunikat koniecGry;
     Komunikat wyjscie;
     Komunikat F1;
 };
 
 bool graWstrzymana = false;
 bool pomocAktywna = false;
-bool przegrana = false;
+bool koniecGry = false;
 bool wyjscieAktywne = false;
 sf::Font czcionka;
 sf::Texture teksturaSerca;
+sf::SoundBuffer bufferStrzalu;
 
 // ladowanie czcionki i tekstury
-bool zaladuj(sf::Font &czcionka, sf::Texture &teksturaSerca)
+bool zaladuj(sf::Font &czcionka, sf::Texture &teksturaSerca, sf::SoundBuffer &bufferStrzalu, sf::Sound &dzwiekStrzalu)
 {
     if (!czcionka.loadFromFile("../assets/Pricedown Bl.otf"))
     {
@@ -39,6 +41,12 @@ bool zaladuj(sf::Font &czcionka, sf::Texture &teksturaSerca)
         std::cout << "Nie udalo sie zaladowac obrazka serca!" << std::endl;
         return false;
     }
+    if (!bufferStrzalu.loadFromFile("../assets/strzal.wav"))
+    {
+        std::cout << "Nie udalo sie zaladowac dzwieku strzalu!" << std::endl;
+        return false;
+    }
+    dzwiekStrzalu.setBuffer(bufferStrzalu);
     return true;
 }
 
@@ -108,10 +116,175 @@ void wyswietlRanking(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan
     window.display();
 }
 
-void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, bool &graTrwa, sf::Texture teksturaSerca, Komunikaty &komunikaty, Ranking &ranking)
+void przesunWrogow(std::vector<Wrog> &wrogowie, float &czasOdOstatniegoRuchu, float interwalRuchu, float &kierunek, float odstepK, float odstepW, bool &zmienKierunek, bool &przesunietoPredzej)
+{
+    // ruch wrogow co okreslony czas
+    if (czasOdOstatniegoRuchu >= interwalRuchu)
+    {
+        // jesli w poprzednim kroku byl ruch w dol, to sie wykonuje i blokuje nizsze wywolanie
+        if (zmienKierunek)
+        {
+            for (auto &wrog : wrogowie)
+            {
+                wrog.przesun(kierunek * odstepK, 0.0f);
+                przesunietoPredzej = true;
+            }
+        }
+
+        zmienKierunek = false;
+        // sprawdzenie czy ktorys dotarl do krawedzi
+        for (auto &wrog : wrogowie)
+        {
+            if (wrog.pobierzKsztalt().getPosition().x <= 15 ||
+                wrog.pobierzKsztalt().getPosition().x + wrog.pobierzKsztalt().getSize().x >= 945)
+            {
+                zmienKierunek = true;
+                break;
+            }
+            // jezeli dotr¥ do doˆu koniec gry
+            if (wrog.pobierzKsztalt().getPosition().y + wrog.pobierzKsztalt().getSize().y >= 550)
+            {
+                koniecGry = true;
+                graWstrzymana = true;
+            }
+        }
+
+        // jesli wrog dotarl do krawedzi to zmienia sie kierunek
+        if (zmienKierunek)
+        {
+            kierunek = -kierunek;
+
+            // przesuniecie w dol
+            for (auto &wrog : wrogowie)
+            {
+                wrog.przesun(0.0f, odstepW);
+            }
+        }
+        else
+        {
+            if (!przesunietoPredzej)
+            {
+                // ruch poziomy, jesli na samym poczatku nie zostalo wykonane
+                for (auto &wrog : wrogowie)
+                {
+                    wrog.przesun(kierunek * odstepK, 0.0f);
+                }
+            }
+            else
+            {
+                // jesli wczesniej wykonano ruch to sie zeruje
+                przesunietoPredzej = false;
+                czasOdOstatniegoRuchu = 0.f;
+                // continue;
+            }
+        }
+        // reset czasu ruchu
+        czasOdOstatniegoRuchu = 0.0f;
+    }
+}
+
+void obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, bool &koniecGry, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, float &czasOdOstatniegoStrzalu, float &minimalnyCzasStrzalu, Gracz &gracz, sf::Sound &dzwiekStrzalu, std::vector<Pocisk> &pociskiGracza)
+{
+    while (window.pollEvent(event))
+    {
+        if (event.type == sf::Event::Closed)
+        {
+            window.close();
+            graTrwa = false;
+        }
+        // obsluga przyciskow gdy gra jest aktywna
+        if (koniecGry)
+        {
+            // pobranie znakow od uzytkownika
+            ustawTekst.pobierzZnak(window);
+
+            // Je˜li wci˜ni©to Enter
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !ustawTekst.pobierzWejscie().empty())
+            {
+                std::string nick = ustawTekst.pobierzWejscie();
+                ranking.dodajWynik(nick, gracz.pobierzPunkty());
+
+                // reset stanu gry, powrot do menu
+                koniecGry = false;
+                graWstrzymana = false;
+                stan = StanGry::MENU;
+                return;
+            }
+        }
+
+        if (event.type == sf::Event::KeyPressed)
+        {
+            // otwieranie zapytania o wyjscie
+            if (!pomocAktywna && !koniecGry && event.key.code == sf::Keyboard::Escape)
+            {
+                graWstrzymana = true;
+                wyjscieAktywne = true;
+            }
+            // powrot z pomocy
+            if (pomocAktywna && event.key.code == sf::Keyboard::Escape)
+            {
+                pomocAktywna = false;
+                graWstrzymana = false;
+            }
+            // zapytanie o wyjscie
+            if (wyjscieAktywne)
+            {
+                // powrot do menu
+                if (event.key.code == sf::Keyboard::T)
+                {
+                    koniecGry = true;
+                    wyjscieAktywne = false;
+
+                    // pobranie znakow od uzytkownika
+                    ustawTekst.pobierzZnak(window);
+                    ustawTekst.czysc();
+
+                    // Je˜li wci˜ni©to Enter
+                    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !ustawTekst.pobierzWejscie().empty())
+                    {
+                        std::string nick = ustawTekst.pobierzWejscie();
+                        ranking.dodajWynik(nick, gracz.pobierzPunkty());
+
+                        // reset stanu gry, powrot do menu
+                        koniecGry = false;
+                        graWstrzymana = false;
+                        stan = StanGry::MENU;
+                        return;
+                    }
+                }
+                // wznowienie gry
+                else if (event.key.code == sf::Keyboard::N)
+                {
+                    graWstrzymana = false;
+                    wyjscieAktywne = false;
+                }
+            }
+            // otwarcie pomocy
+            if (event.key.code == sf::Keyboard::F1 && !wyjscieAktywne)
+            {
+                graWstrzymana = true;
+                pomocAktywna = true;
+                // return;
+            }
+            // strzaly gracza
+            if (!graWstrzymana && event.key.code == sf::Keyboard::Space && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
+            {
+                dzwiekStrzalu.play();
+                float x = gracz.pobierzPozycje().x + gracz.pobierzRozmiar().x / 2 - 2.5f;
+                float y = gracz.pobierzPozycje().y;
+                pociskiGracza.emplace_back(x, y, -1.0f); // -1.0f - leci do gory
+                czasOdOstatniegoStrzalu = 0.0f;
+            }
+        }
+    }
+}
+
+void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, bool &graTrwa, sf::Texture teksturaSerca, Komunikaty &komunikaty, Ranking &ranking, sf::Sound &dzwiekStrzalu)
 {
     Gracz gracz(teksturaSerca);
     std::vector<Wrog> wrogowie;
+    std::vector<Wrog> wrogowieB;
+    std::vector<Wrog> wrogowieC;
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
     UstawTekst ustawTekst(czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 300)); // Dodajemy instancj© UstawTekst
@@ -158,158 +331,12 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
         }
 
         sf::Event event;
-        while (window.pollEvent(event))
+        obslugaZdarzen(window, event, graTrwa, koniecGry, ustawTekst, ranking, graWstrzymana, stan, czasOdOstatniegoStrzalu, minimalnyCzasStrzalu, gracz, dzwiekStrzalu,pociskiGracza);
+
+            // logika obiektow
+            if (!graWstrzymana)
         {
-            if (event.type == sf::Event::Closed)
-            {
-                window.close();
-                graTrwa = false;
-            }
-            // obsluga przyciskow gdy gra jest aktywna
-            if (przegrana)
-            {
-                // pobranie znakow od uzytkownika
-                ustawTekst.pobierzZnak(window);
-
-                // Je˜li wci˜ni©to Enter
-                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !ustawTekst.pobierzWejscie().empty())
-                {
-                    std::string nick = ustawTekst.pobierzWejscie();
-                    ranking.dodajWynik(nick, gracz.pobierzPunkty());
-
-                    // reset stanu gry, powrot do menu
-                    przegrana = false;
-                    graWstrzymana = false;
-                    stan = StanGry::MENU;
-                    return;
-                }
-            }
-
-            if (event.type == sf::Event::KeyPressed)
-            {
-                // // resetowanie gry po przegranej
-                // if (przegrana && event.key.code == sf::Keyboard::Enter)
-                // {
-                //     ranking.dodajWynik("Gracz", gracz.pobierzPunkty());
-                //     przegrana = false;
-                //     graWstrzymana = false;
-                //     return;
-                // }
-                // otwieranie zapytania o wyjscie
-                if (!pomocAktywna && !przegrana && event.key.code == sf::Keyboard::Escape)
-                {
-                    graWstrzymana = true;
-                    wyjscieAktywne = true;
-                }
-                // powrot z pomocy
-                if (pomocAktywna && event.key.code == sf::Keyboard::Escape)
-                {
-                    pomocAktywna = false;
-                    graWstrzymana = false;
-                }
-                // zapytanie o wyjscie
-                if (wyjscieAktywne)
-                {
-                    // powrot do menu
-                    if (event.key.code == sf::Keyboard::T)
-                    {
-                        stan = StanGry::MENU;
-                        ranking.dodajWynik("Gracz", gracz.pobierzPunkty());
-                        graWstrzymana = false;
-                        wyjscieAktywne = false;
-                        przegrana = false;
-                        return;
-                    }
-                    // wznowienie gry
-                    else if (event.key.code == sf::Keyboard::N)
-                    {
-                        graWstrzymana = false;
-                        wyjscieAktywne = false;
-                    }
-                }
-                // otwarcie pomocy
-                if (event.key.code == sf::Keyboard::F1 && !wyjscieAktywne)
-                {
-                    graWstrzymana = true;
-                    pomocAktywna = true;
-                    // return;
-                }
-                // strzaly gracza
-                if (!graWstrzymana && event.key.code == sf::Keyboard::Space && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
-                {
-                    float x = gracz.pobierzPozycje().x + gracz.pobierzRozmiar().x / 2 - 2.5f;
-                    float y = gracz.pobierzPozycje().y;
-                    pociskiGracza.emplace_back(x, y, -1.0f); // -1.0f - leci do gory
-                    czasOdOstatniegoStrzalu = 0.0f;
-                }
-            }
-        }
-        // logika obiektow
-        if (!graWstrzymana)
-        {
-            // ruch wrogow co okreslony czas
-            if (czasOdOstatniegoRuchu >= interwalRuchu)
-            {
-                // jesli w poprzednim kroku byl ruch w dol, to sie wykonuje i blokuje nizsze wywolanie
-                if (zmienKierunek)
-                {
-                    for (auto &wrog : wrogowie)
-                    {
-                        wrog.przesun(kierunek * odstepK, 0.0f);
-                        przesunietoPredzej = true;
-                    }
-                }
-
-                zmienKierunek = false;
-                // sprawdzenie czy ktorys dotarl do krawedzi
-                for (auto &wrog : wrogowie)
-                {
-                    if (wrog.pobierzKsztalt().getPosition().x <= 15 ||
-                        wrog.pobierzKsztalt().getPosition().x + wrog.pobierzKsztalt().getSize().x >= 945)
-                    {
-                        zmienKierunek = true;
-                        break;
-                    }
-                    // jezeli dotr¥ do doˆu koniec gry
-                    if (wrog.pobierzKsztalt().getPosition().y + wrog.pobierzKsztalt().getSize().y >= 550)
-                    {
-                        przegrana = true;
-                        graWstrzymana = true;
-                    }
-                }
-
-                // jesli wrog dotarl do krawedzi to zmienia sie kierunek
-                if (zmienKierunek)
-                {
-                    kierunek = -kierunek;
-
-                    // przesuniecie w dol
-                    for (auto &wrog : wrogowie)
-                    {
-                        wrog.przesun(0.0f, odstepW);
-                    }
-                }
-                else
-                {
-                    if (!przesunietoPredzej)
-                    {
-                        // ruch poziomy, jesli na samym poczatku nie zostalo wykonane
-                        for (auto &wrog : wrogowie)
-                        {
-                            wrog.przesun(kierunek * odstepK, 0.0f);
-                        }
-                    }
-                    else
-                    {
-                        // jesli wczesniej wykonano ruch to sie zeruje
-                        przesunietoPredzej = false;
-                        czasOdOstatniegoRuchu = 0.f;
-                        continue;
-                    }
-                }
-                // reset czasu ruchu
-                czasOdOstatniegoRuchu = 0.0f;
-            }
+            przesunWrogow(wrogowie, czasOdOstatniegoRuchu, interwalRuchu, kierunek, odstepK, odstepW, zmienKierunek, przesunietoPredzej);
 
             // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
             for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();)
@@ -350,7 +377,7 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
             if (czasOdOstatniegoStrzaluWroga >= minimalnyCzasStrzaluWroga && !wrogowie.empty())
             {
                 int iloscWrogow = wrogowie.size();
-                for (int i = 0; i < iloscWrogow / 6; i++)
+                for (int i = 0; i < iloscWrogow / 10 + 2; i++)
                 {
                     int indeksWroga = rand() % wrogowie.size();
                     sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition();
@@ -373,7 +400,7 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
 
                     if (gracz.pobierzLiczbeZyc() == 0)
                     {
-                        przegrana = true;
+                        koniecGry = true;
                         graWstrzymana = true;
                     }
                 }
@@ -413,11 +440,11 @@ void uruchomGre(sf::RenderWindow &window, sf::Font &czcionka, StanGry &stan, boo
             window.draw(zaciemnienie);
             komunikaty.pomoc.rysuj(window);
         }
-        if (przegrana)
+        if (koniecGry)
         {
             window.draw(zaciemnienie);
-            komunikaty.przegrana.rysuj(window);
-            komunikaty.przegrana.rysuj(window);
+            komunikaty.koniecGry.rysuj(window);
+            komunikaty.koniecGry.rysuj(window);
             ustawTekst.rysuj(window); // okno do wpisywania nickow
         }
         if (wyjscieAktywne)
@@ -433,7 +460,8 @@ int main()
 {
     sf::Font czcionka;
     sf::Texture teksturaSerca;
-    zaladuj(czcionka, teksturaSerca);
+    sf::Sound dzwiekStrzalu;
+    zaladuj(czcionka, teksturaSerca, bufferStrzalu, dzwiekStrzalu);
 
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
 
@@ -454,8 +482,8 @@ int main()
         sf::Color::Black, sf::Color::Blue);
     komunikaty.pomoc.ustawPozycje(50.f, 30.f);
 
-    komunikaty.przegrana.ustawTekst("                  Przegrales\nWpisz swoj nick i wcisnij ENTER", sf::Color::Red, sf::Color::Black);
-    komunikaty.przegrana.ustawPozycje(180, 200);
+    komunikaty.koniecGry.ustawTekst("                  koniec gry\n\n\nWpisz swoj nick i wcisnij ENTER", sf::Color::Red, sf::Color::Black);
+    komunikaty.koniecGry.ustawPozycje(180, 200);
 
     komunikaty.wyjscie.ustawTekst("Czy na pewno chcesz wyjsc? (T/N)", sf::Color::White, sf::Color::Black);
     komunikaty.wyjscie.ustawPozycje(60, 250);
@@ -480,7 +508,7 @@ int main()
             wyswietlRanking(window, czcionka, stan, graTrwa, ranking);
             break;
         case GRA:
-            uruchomGre(window, czcionka, stan, graTrwa, teksturaSerca, komunikaty, ranking);
+            uruchomGre(window, czcionka, stan, graTrwa, teksturaSerca, komunikaty, ranking, dzwiekStrzalu);
             break;
         default:
             break;
