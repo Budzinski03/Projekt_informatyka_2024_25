@@ -4,8 +4,6 @@
 #include "../include/klasy.h"
 #include <iostream>
 
-
-
 Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
 {
     std::string tekstOpcji[] = {"Nowa gra", "Ranking", "Wyjscie"};
@@ -14,10 +12,11 @@ Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
     {
         sf::Text tekst;
         tekst.setFont(czcionka);
+        tekst.setCharacterSize(40);
         // jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
         tekst.setFillColor(i == wybranaOpcja ? sf::Color::Red : sf::Color::White);
         tekst.setString(tekstOpcji[i]);
-        tekst.setPosition(sf::Vector2f(960 / 10, 600 / (6) * (i + 1)));
+        tekst.setPosition(sf::Vector2f(960 / 8, 600 / (4) * (1 * i + 0.5)));
         opcje.push_back(tekst);
     }
 }
@@ -56,9 +55,7 @@ int Menu::pobierzWybranaOpcje() const
     return wybranaOpcja;
 }
 
-
-
-Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(2), punkty(0)
+Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(3), punkty(0)
 {
     ksztalt.setSize(sf::Vector2f(60, 30));
     ksztalt.setFillColor(sf::Color::Green);
@@ -147,27 +144,56 @@ int Gracz::pobierzPunkty() const
     return punkty;
 }
 
+void Gracz::dodajZycie(int zycie, const sf::Texture &teksturaSerca)
+{
+    std::cout << zycie << std::endl;
+    for (int i = 0; i < zycie; i++)
+    {
+        std::cout << "dodano zycie\n";
+        sf::Sprite serce;
+        serce.setTexture(teksturaSerca);
+        serce.setScale(0.05f, 0.05f);
+
+        // Obliczenie pozycji nowego serca na podstawie istniejących serc
+        float xOffset = 20 + serca.size() * 30; // Nowa pozycja zależna od liczby istniejących serc
+        serce.setPosition(xOffset, 20);
+
+        serca.push_back(serce);
+    }
+
+    // Zwiększenie liczby żyć
+    liczbaZyc += zycie;
+}
+
+void Gracz::resetuj()
+{
+    // Resetuje pozycję gracza
+    ksztalt.setPosition(480.f, 550.f); // Przykładowa pozycja startowa
+}
 
 Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false)
 {
-    ksztalt.setSize(sf::Vector2f(50, 25));
-    switch(typ)
+    switch (typ)
     {
-        case 1:
+    case 1:
         ksztalt.setFillColor(sf::Color::Red);
+        ksztalt.setSize(sf::Vector2f(50, 25));
         wartoscPunktow = 30;
         break;
-        case 2:
+    case 2:
         ksztalt.setFillColor(sf::Color::Green);
+        ksztalt.setSize(sf::Vector2f(50, 25));
         wartoscPunktow = 20;
         break;
-        case 3:
+    case 3:
         ksztalt.setFillColor(sf::Color::Blue);
+        ksztalt.setSize(sf::Vector2f(50, 25));
         wartoscPunktow = 10;
         break;
-        default:
+    default:
         ksztalt.setFillColor(sf::Color::White);
-        wartoscPunktow = 5;
+        ksztalt.setSize(sf::Vector2f(80, 40));
+        wartoscPunktow = 50;
         break;
     }
     ksztalt.setPosition(x, y);
@@ -198,8 +224,6 @@ int Wrog::pobierzPunkty()
     return wartoscPunktow;
 }
 
-
-
 Pocisk::Pocisk(float x, float y, float kierunek) : predkosc(300.f), kierunek(kierunek)
 {
     ksztalt.setSize(sf::Vector2f(5, 10));
@@ -223,8 +247,6 @@ sf::FloatRect Pocisk::pobierzObszar() const
 {
     return ksztalt.getGlobalBounds();
 }
-
-
 
 Ranking::Ranking(const std::string &nazwaPliku, const sf::Font &czcionka) : nazwaPliku(nazwaPliku), czcionka(czcionka)
 {
@@ -289,7 +311,6 @@ void Ranking::rysuj(sf::RenderWindow &window)
     window.draw(tekstRanking);
 }
 
-
 Komunikat::Komunikat(const sf::Font &czcionka)
 {
     tekstKomunikatu.setFont(czcionka);
@@ -319,8 +340,6 @@ std::string Komunikat::pobierzTekst()
 {
     return tekstKomunikatu.getString().toAnsiString();
 }
-
-
 
 UstawTekst::UstawTekst(sf::Font &czcionka, sf::Vector2f rozmiar, sf::Vector2f pozycja)
 {
@@ -363,7 +382,7 @@ void UstawTekst::pobierzZnak(sf::RenderWindow &window)
                     wejscie.pop_back();
                 }
             }
-            else if (event.text.unicode >= 32 && event.text.unicode < 128 && wejscie.size() < 15) 
+            else if (event.text.unicode >= 32 && event.text.unicode < 128 && wejscie.size() < 15)
             {
                 // Ignoruj niewidzialne znaki poniżej 32 (np. tabulatory, nowa linia)
                 wejscie += static_cast<char>(event.text.unicode);

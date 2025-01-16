@@ -29,6 +29,8 @@ public:
     sf::Vector2f pobierzRozmiar() const;
     void dodajPunkty(int punkty);
     int pobierzPunkty() const;
+    void dodajZycie(int zycie, const sf::Texture &teksturaSerca);
+    void resetuj();
 
 private:
     sf::RectangleShape ksztalt;
