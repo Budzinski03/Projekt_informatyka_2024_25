@@ -24,7 +24,7 @@ public:
     void steruj(float deltaTime);
     void rysuj(sf::RenderWindow &window, sf::Font &czcionka);
     sf::Vector2f pobierzPozycje() const;
-    void stracZycie();
+    bool stracZycie(int);
     int pobierzLiczbeZyc() const;
     sf::Vector2f pobierzRozmiar() const;
     void dodajPunkty(int punkty);
@@ -51,11 +51,14 @@ public:
     void przesun(float dx, float dy);
     int pobierzPunkty();
     bool czyStrzelil; //flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
+    int pobierzTyp();
 
 private:
     sf::RectangleShape ksztalt;
     int typ; //rodzaj wroga
     int wartoscPunktow;
+    int zycie;
+    int obrazenia;
 };
 
 
@@ -63,14 +66,17 @@ class Pocisk
 {
 public:
     Pocisk(float x, float y, float kierunek);
+    Pocisk(float x, float y, float kierunek, sf::Color kolor, int typWroga); //konstruktor dla wrogow
     void ruszaj(float deltaTime);
     void rysuj(sf::RenderWindow &window);
     sf::FloatRect pobierzObszar() const;
+    int pobierzObrazenia() const;
 
 private:
     sf::RectangleShape ksztalt;
     float predkosc;
     float kierunek; //-1 dla gracza +1 dla wroga
+    int obrazenia; //w zaleznosci od wroga
 };
 
 

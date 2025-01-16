@@ -40,17 +40,17 @@ int aktualnyPoziom = 1;
 bool bossPokonany = false;
 
 // parametry
-float kierunek = 1.0f;      // predkosc wrogow w poziomie
-float interwalRuchu = 2.f; // wrogowie przesuwani co 1s
+float kierunek = 1.0f;     // predkosc wrogow w poziomie
+float interwalRuchu = 3.f; // wrogowie przesuwani co 1s
 float czasOdOstatniegoRuchu = 0.0f;
 float czasOdOstatniegoStrzalu = 1.5f;
-float minimalnyCzasStrzalu = 1.0f;
+float minimalnyCzasStrzalu = 0.6f;
 float czasOdOstatniegoStrzaluWroga = 0.f;
 float minimalnyCzasStrzaluWroga = 1.0f;
 
 // parametry wrogow
 int kolumny = 6;
-int wiersze = 4;
+int wiersze = 3;
 float odstepK = 80.f;
 float odstepW = 40.f;
 
@@ -219,7 +219,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
         for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
         {
             // Sprawdzenie kolizji pocisku z wrogiem
-            if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), sf::Vector2f(50, 25))))
+            if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), wrogIt->pobierzKsztalt().getSize())))
             {
                 gracz.dodajPunkty(wrogIt->pobierzPunkty()); // dodanie punktow w zaleznosci od wartosci wroga
                 // jesli kolizja to usuwa wroga
@@ -232,7 +232,6 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
                 ++wrogIt;
             }
         }
-
         // usuwanie pociskow po zderzeniu lub ktore wyszly poza zakres
         if (wrogZniszczony || pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
         {
@@ -253,8 +252,14 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
             int indeksWroga = rand() % wrogowie.size();
             if (!wrogowie[indeksWroga].czyStrzelil)
             {
-                sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition();
-                pociskiWroga.emplace_back(pozycjaWroga.x + 20.f, pozycjaWroga.y + 20.f, 1.f);
+                sf::Vector2f pozycjaWroga = wrogowie[indeksWroga].pobierzKsztalt().getPosition() + sf::Vector2f(wrogowie[indeksWroga].pobierzKsztalt().getSize().x / 2, wrogowie[indeksWroga].pobierzKsztalt().getSize().y);
+                // dla bossa wieksza predkosc i inny kolor
+                sf::Color kolorPocisku = wrogowie[indeksWroga].pobierzTyp() == 4 ? sf::Color::Red : sf::Color::Yellow;
+                float predksocPocisku = wrogowie[indeksWroga].pobierzTyp() == 4 ? 1.25f : 1.f;
+                int typWroga = wrogowie[indeksWroga].pobierzTyp();
+
+                pociskiWroga.emplace_back(pozycjaWroga.x, pozycjaWroga.y, predksocPocisku, kolorPocisku, typWroga);
+
                 wrogowie[indeksWroga].czyStrzelil = true; // zapobiegniecie podwojnemu wylosowaniu i wystrzeleniu
                 czasOdOstatniegoStrzaluWroga = 0.f;
             }
@@ -272,20 +277,20 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
         pociskIt->ruszaj(deltaTime);
 
         // sprawdzenie kolizji miedzy pociskami a graczem
-        if (pociskIt->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), sf::Vector2f(60, 30))))
+        if (pociskIt->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), gracz.pobierzRozmiar())))
         {
-            // jezeli pocisk trafi to gracz traci zycie
-            gracz.stracZycie();
-            pociskIt = pociskiWroga.erase(pociskIt);
+            // jezeli pocisk trafi to gracz traci zycie, w zaleznosci od obrazen pocisku
+            bool zycia = gracz.stracZycie(pociskIt->pobierzObrazenia()); //
+            pociskIt = pociskiWroga.erase(pociskIt);                     // niszczenie pocisku po trafieniu
 
-            if (gracz.pobierzLiczbeZyc() == 0)
+            if (!zycia)
             {
                 koniecGry = true;
                 graWstrzymana = true;
             }
         }
         // usuniecie pociskow spoza ekranu
-        else if (pociskIt->pobierzObszar().top > 600)
+        else if (pociskIt->pobierzObszar().top > 580-pociskIt->pobierzObszar().getSize().y)
         {
             pociskIt = pociskiWroga.erase(pociskIt);
         }
@@ -403,8 +408,8 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
     {
         for (int rzad = 0; rzad < wiersze + aktualnyPoziom - 1; ++rzad)
         {
-            float x = kolumna * odstepK + 95.f; //odstep miedzy kolumnanmi
-            float y = rzad * odstepW + 80; //odstep miedzy rzedami
+            float x = kolumna * odstepK + 95.f; // odstep miedzy kolumnanmi
+            float y = rzad * odstepW + 120;     // odstep miedzy rzedami
             int typ;
             if (rzad == 0)
                 typ = 1;
@@ -417,13 +422,14 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
     }
 
     // dodanie bossan na koncu poziomu
-    if (aktualnyPoziom % 1 == 0)
+    if (aktualnyPoziom % 2 == 0)
     {
         float x1 = wrogowie.front().pobierzKsztalt().getPosition().x;
         float x2 = wrogowie.back().pobierzKsztalt().getPosition().x + wrogowie.back().pobierzKsztalt().getSize().x;
-        wrogowie.emplace_back((x1+x2)/2-80.f/2, 50.f, 5); // Przykladowy boss
+        wrogowie.emplace_back((x1 + x2) / 2 - 80.f / 2, 50.f, 4); // Przykladowy boss
     }
 }
+
 void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga)
 {
     if (wrogowie.empty())
@@ -457,18 +463,17 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunika
 
     // Tworzenie ramki
     sf::RectangleShape ramka;
-    ramka.setSize(sf::Vector2f(920, 560)); // Rozmiar odpowiada wielkosci okna
-    ramka.setFillColor(sf::Color::Transparent); // Wype�nienie przezroczyste
-    ramka.setOutlineThickness(20);               // Grubo�� obramowania
-    ramka.setOutlineColor(sf::Color(255, 0, 0, 120));    // Kolor ramki
-    ramka.setPosition(20,20);
+    ramka.setSize(sf::Vector2f(920, 560));            // Rozmiar odpowiada wielkosci okna
+    ramka.setFillColor(sf::Color::Transparent);       // Wype�nienie przezroczyste
+    ramka.setOutlineThickness(20);                    // Grubo�� obramowania
+    ramka.setOutlineColor(sf::Color(255, 0, 0, 120)); // Kolor ramki
+    ramka.setPosition(20, 20);
 
     sf::Vertex linia[] =
-    {
-        sf::Vertex(sf::Vector2f(20, 550), sf::Color::Red),  // Punkt pocz�tkowy (czerwony)
-        sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) // Punkt ko�cowy (niebieski)
-    };
-
+        {
+            sf::Vertex(sf::Vector2f(20, 550), sf::Color::Red),  // Punkt pocz�tkowy (czerwony)
+            sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) // Punkt ko�cowy (niebieski)
+        };
 
     while (graTrwa)
     {
@@ -549,7 +554,6 @@ int main()
     zaladuj(zasoby);
 
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
-
 
     // Inicjalizacja komunikat?w
     Komunikaty komunikaty = {

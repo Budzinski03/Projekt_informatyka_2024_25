@@ -117,11 +117,21 @@ sf::Vector2f Gracz::pobierzPozycje() const
     return ksztalt.getPosition();
 }
 
-void Gracz::stracZycie()
+bool Gracz::stracZycie(int obrazenia)
 {
-    if (liczbaZyc > 0)
-        liczbaZyc--;
-    serca.pop_back();
+    if (liczbaZyc > obrazenia)
+    {
+        liczbaZyc -= obrazenia;
+        for (int i = 0; i < obrazenia; i++)
+            if (!serca.empty())
+            {
+                serca.pop_back();
+                std::cout << "usuwam\n";
+            }
+        return true;
+    }
+    serca.clear();
+    return false;
 }
 
 int Gracz::pobierzLiczbeZyc() const
@@ -171,7 +181,7 @@ void Gracz::resetuj()
     ksztalt.setPosition(480.f, 550.f); // Przykładowa pozycja startowa
 }
 
-Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false)
+Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycie(1)
 {
     switch (typ)
     {
@@ -190,10 +200,17 @@ Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false)
         ksztalt.setSize(sf::Vector2f(50, 25));
         wartoscPunktow = 10;
         break;
+    case 4:
+        ksztalt.setFillColor(sf::Color::Magenta);
+        ksztalt.setSize(sf::Vector2f(80, 40));
+        wartoscPunktow = 100;
+        zycie = 5; // wieksza liczba zyc
+        break;
     default:
         ksztalt.setFillColor(sf::Color::White);
         ksztalt.setSize(sf::Vector2f(80, 40));
         wartoscPunktow = 50;
+        zycie = 1;
         break;
     }
     ksztalt.setPosition(x, y);
@@ -224,12 +241,27 @@ int Wrog::pobierzPunkty()
     return wartoscPunktow;
 }
 
+int Wrog::pobierzTyp()
+{
+    return typ;
+}
+
 Pocisk::Pocisk(float x, float y, float kierunek) : predkosc(300.f), kierunek(kierunek)
 {
     ksztalt.setSize(sf::Vector2f(5, 10));
     // jezeli kierunek < 0 to magenta, w innym przypadku yellow
     ksztalt.setFillColor(kierunek < 0 ? sf::Color::Magenta : sf::Color::Yellow);
     ksztalt.setPosition(x, y);
+}
+
+Pocisk::Pocisk(float x, float y, float kierunek, sf::Color kolor, int typWroga) : predkosc(300.f), kierunek(kierunek)
+{
+    ksztalt.setSize(sf::Vector2f(5, 10));
+    ksztalt.setFillColor(kolor); // ustawienie koloru pocsiku kolor pocisku
+    ksztalt.setPosition(x, y);
+    obrazenia = 1;
+    if (typWroga == 4)
+        obrazenia = 2;
 }
 
 // ruch pocisków
@@ -246,6 +278,11 @@ void Pocisk::rysuj(sf::RenderWindow &window)
 sf::FloatRect Pocisk::pobierzObszar() const
 {
     return ksztalt.getGlobalBounds();
+}
+
+int Pocisk::pobierzObrazenia() const
+{
+    return obrazenia;
 }
 
 Ranking::Ranking(const std::string &nazwaPliku, const sf::Font &czcionka) : nazwaPliku(nazwaPliku), czcionka(czcionka)
