@@ -39,6 +39,7 @@ private:
     int liczbaZyc;
     int punkty;
     sf::Text tekstPunkty;
+    sf::Text tekstZycia;
 };
 
 class Wrog
@@ -52,12 +53,14 @@ public:
     int pobierzPunkty();
     bool czyStrzelil; //flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
     int pobierzTyp();
+    bool stracZycie();
+    int pobierzZycia();
 
 private:
     sf::RectangleShape ksztalt;
     int typ; //rodzaj wroga
     int wartoscPunktow;
-    int zycie;
+    int zycia;
     int obrazenia;
 };
 
@@ -103,7 +106,8 @@ public:
     void ustawTekst(const std::string &tekst, const sf::Color &kolor, const sf::Color &kolorObramowania);
     void rysuj(sf::RenderWindow &window);
     void ustawPozycje(float, float);
-    std::string pobierzTekst();
+    //std::string pobierzTekst_string();
+    sf::Text pobierzTekst();
 
 private:
     sf::Text tekstKomunikatu;

@@ -4,6 +4,9 @@
 #include "../include/klasy.h"
 #include <iostream>
 
+
+///////////////////// MENU /////////////////////////
+
 Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
 {
     std::string tekstOpcji[] = {"Nowa gra", "Ranking", "Wyjscie"};
@@ -55,6 +58,9 @@ int Menu::pobierzWybranaOpcje() const
     return wybranaOpcja;
 }
 
+
+///////////////////// GRACZ /////////////////////////
+
 Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(3), punkty(0)
 {
     ksztalt.setSize(sf::Vector2f(60, 30));
@@ -75,7 +81,7 @@ Gracz::Gracz(const sf::Texture &teksturaSerca) : predkosc(200.f), liczbaZyc(3), 
     }
 }
 
-// obsluga wejscia
+// obsluga wejscia / sterowanie
 void Gracz::steruj(float deltaTime)
 {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
@@ -99,16 +105,27 @@ void Gracz::rysuj(sf::RenderWindow &window, sf::Font &czcionka)
     window.draw(ksztalt);
 
     // rysowanie serc
-    for (const auto &serce : serca)
+    if (serca.size() <= 5) // jezeli <= 5 to wsywietla tyle serc
     {
-        window.draw(serce);
+        for (const auto &serce : serca)
+        {
+            window.draw(serce);
+        }
     }
-
+    else //jesli wiecej to wysweitla serce xilosc
+    {
+        tekstZycia.setFont(czcionka);
+        tekstZycia.setFillColor(sf::Color::Red);
+        tekstZycia.setPosition(50, 15);
+        tekstZycia.setString("x" + std::to_string(serca.size()));
+        window.draw(serca[0]);
+        window.draw(tekstZycia);
+    }
     // rysowanie punktow
-    //  Rysowanie punktów
     tekstPunkty.setFont(czcionka);
-    tekstPunkty.setPosition(760, 10);
     tekstPunkty.setString("Punkty: " + std::to_string(punkty));
+    //ulozenie tekstu w zaleznosci do wymiarow - ilosci punktow
+    tekstPunkty.setPosition(window.getSize().x - (tekstPunkty.getLocalBounds().width) - 30, 15);
     window.draw(tekstPunkty);
 }
 
@@ -126,7 +143,6 @@ bool Gracz::stracZycie(int obrazenia)
             if (!serca.empty())
             {
                 serca.pop_back();
-                std::cout << "usuwam\n";
             }
         return true;
     }
@@ -181,7 +197,10 @@ void Gracz::resetuj()
     ksztalt.setPosition(480.f, 550.f); // Przykładowa pozycja startowa
 }
 
-Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycie(1)
+
+///////////////////// WROG /////////////////////////
+
+Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycia(1)
 {
     switch (typ)
     {
@@ -189,6 +208,7 @@ Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycie(1)
         ksztalt.setFillColor(sf::Color::Red);
         ksztalt.setSize(sf::Vector2f(50, 25));
         wartoscPunktow = 30;
+        zycia = 2;
         break;
     case 2:
         ksztalt.setFillColor(sf::Color::Green);
@@ -204,16 +224,16 @@ Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycie(1)
         ksztalt.setFillColor(sf::Color::Magenta);
         ksztalt.setSize(sf::Vector2f(80, 40));
         wartoscPunktow = 100;
-        zycie = 5; // wieksza liczba zyc
+        zycia = 5; // wieksza liczba zyc
         break;
     default:
         ksztalt.setFillColor(sf::Color::White);
         ksztalt.setSize(sf::Vector2f(80, 40));
         wartoscPunktow = 50;
-        zycie = 1;
         break;
     }
     ksztalt.setPosition(x, y);
+    std::cout << zycia << '\n';
 }
 
 void Wrog::rysuj(sf::RenderWindow &window) const
@@ -245,6 +265,27 @@ int Wrog::pobierzTyp()
 {
     return typ;
 }
+
+
+bool Wrog::stracZycie()
+{
+    if (zycia > 1)
+    {
+        zycia --;
+        std::cout<<"odejmuje zycie  Zycia: "<<zycia<<std::endl;
+        return true;
+    }
+    std::cout<<"Zwracam false\n";
+    return false;
+
+}
+
+int Wrog::pobierzZycia()
+{
+    return zycia;
+}
+
+///////////////////// POCISK /////////////////////////
 
 Pocisk::Pocisk(float x, float y, float kierunek) : predkosc(300.f), kierunek(kierunek)
 {
@@ -284,6 +325,10 @@ int Pocisk::pobierzObrazenia() const
 {
     return obrazenia;
 }
+
+
+
+///////////////////// RANKING /////////////////////////
 
 Ranking::Ranking(const std::string &nazwaPliku, const sf::Font &czcionka) : nazwaPliku(nazwaPliku), czcionka(czcionka)
 {
@@ -348,6 +393,10 @@ void Ranking::rysuj(sf::RenderWindow &window)
     window.draw(tekstRanking);
 }
 
+
+
+///////////////////// KOMUNIKAT /////////////////////////
+
 Komunikat::Komunikat(const sf::Font &czcionka)
 {
     tekstKomunikatu.setFont(czcionka);
@@ -373,10 +422,18 @@ void Komunikat::ustawPozycje(float x, float y)
     tekstKomunikatu.setPosition(x, y);
 }
 
-std::string Komunikat::pobierzTekst()
+// std::string Komunikat::pobierzTekst_string()
+// {
+//     return tekstKomunikatu.getString().toAnsiString();
+// }
+
+sf::Text Komunikat::pobierzTekst()
 {
-    return tekstKomunikatu.getString().toAnsiString();
+    return tekstKomunikatu;
 }
+
+
+///////////////////// USTAW TEKST /////////////////////////
 
 UstawTekst::UstawTekst(sf::Font &czcionka, sf::Vector2f rozmiar, sf::Vector2f pozycja)
 {
@@ -454,7 +511,7 @@ std::string UstawTekst::pobierzWejscie() const
     return wejscie;
 }
 
-bool UstawTekst::czyPusteWejscie()
-{
-    return wejscie.empty();
-}
+// bool UstawTekst::czyPusteWejscie()
+// {
+//     return wejscie.empty();
+// }

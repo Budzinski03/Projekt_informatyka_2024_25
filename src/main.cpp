@@ -211,20 +211,32 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
 {
     // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
     for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();)
-    { // ruch posisku
-        pociskIt->ruszaj(deltaTime);
+    { 
+        pociskIt->ruszaj(deltaTime);    // ruch posisku
 
-        bool wrogZniszczony = false;
+        bool pociskZniszczony = false;
 
         for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
         {
             // Sprawdzenie kolizji pocisku z wrogiem
             if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), wrogIt->pobierzKsztalt().getSize())))
             {
-                gracz.dodajPunkty(wrogIt->pobierzPunkty()); // dodanie punktow w zaleznosci od wartosci wroga
-                // jesli kolizja to usuwa wroga
-                wrogIt = wrogowie.erase(wrogIt);
-                wrogZniszczony = true;
+                std::cout << "trafiono\n";
+                if (!wrogIt->stracZycie())
+                {
+                    std::cout << "dodaje punkty";
+                    gracz.dodajPunkty(wrogIt->pobierzPunkty()); // dodanie punktow w zaleznosci od wartosci wroga
+                    // jesli kolizja to wrog jest niszczony
+                    wrogIt = wrogowie.erase(wrogIt);
+                }
+                else
+                {
+                    std::cout << "wrog traci zycia: " << wrogIt->pobierzZycia() << std::endl;
+                    ++wrogIt;
+                }
+                // po kolizji pocisk jest niszczony
+                pociskIt = pociskiGracza.erase(pociskIt);
+                pociskZniszczony = true;
                 break;
             }
             else
@@ -233,13 +245,16 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
             }
         }
         // usuwanie pociskow po zderzeniu lub ktore wyszly poza zakres
-        if (wrogZniszczony || pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
+        if (!pociskZniszczony)
         {
-            pociskIt = pociskiGracza.erase(pociskIt);
-        }
-        else
-        {
-            ++pociskIt;
+            if (pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
+            {
+                pociskIt = pociskiGracza.erase(pociskIt); // Usuń pocisk poza ekranem
+            }
+            else
+            {
+                ++pociskIt; // Przejdź do następnego pocisku
+            }
         }
     }
 
@@ -290,7 +305,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
             }
         }
         // usuniecie pociskow spoza ekranu
-        else if (pociskIt->pobierzObszar().top > 580-pociskIt->pobierzObszar().getSize().y)
+        else if (pociskIt->pobierzObszar().top > 580 - pociskIt->pobierzObszar().getSize().y)
         {
             pociskIt = pociskiWroga.erase(pociskIt);
         }
@@ -563,7 +578,7 @@ int main()
         Komunikat(zasoby.czcionka)};
 
     komunikaty.pomoc.ustawTekst(
-        "Pomoc:\n\n"
+        "                                         Pomoc\n\n"
         "-  <-  ->  - Poruszanie graczem\n"
         "- Spacja - Strzal\n"
         "- F1 - Wyswietlnie pomocy\n"
@@ -573,13 +588,14 @@ int main()
     komunikaty.pomoc.ustawPozycje(50.f, 30.f);
 
     komunikaty.koniecGry.ustawTekst("                     koniec gry\n\n\nWpisz swoj nick i wcisnij ENTER", sf::Color::Red, sf::Color::Black);
-    komunikaty.koniecGry.ustawPozycje(180, 120);
+    komunikaty.koniecGry.ustawPozycje(((window.getSize().x - komunikaty.koniecGry.pobierzTekst().getLocalBounds().width)/2), 120);
+
 
     komunikaty.wyjscie.ustawTekst("Czy na pewno chcesz wyjsc? (T/N)", sf::Color::White, sf::Color::Black);
-    komunikaty.wyjscie.ustawPozycje(150, 250);
+    komunikaty.wyjscie.ustawPozycje(((window.getSize().x - komunikaty.wyjscie.pobierzTekst().getLocalBounds().width)/2), window.getSize().y/3);
 
     komunikaty.F1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
-    komunikaty.F1.ustawPozycje(360.f, 10.f);
+    komunikaty.F1.ustawPozycje(((window.getSize().x - komunikaty.F1.pobierzTekst().getLocalBounds().width)/2), 15.f);
 
     StanGry stan = MENU;
     bool graTrwa = true;
