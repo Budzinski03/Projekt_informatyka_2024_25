@@ -37,7 +37,7 @@ bool koniecGry = false;
 bool wyjscieAktywne = false;
 
 int aktualnyPoziom = 1;
-bool bossPokonany = false;
+int zyciaBossa = 5;
 
 // parametry
 float kierunek = 1.0f;     // predkosc wrogow w poziomie
@@ -49,8 +49,8 @@ float czasOdOstatniegoStrzaluWroga = 0.f;
 float minimalnyCzasStrzaluWroga = 1.0f;
 
 // parametry wrogow
-int kolumny = 6;
-int wiersze = 3;
+int kolumny = 1;
+int wiersze = 1;
 float odstepK = 80.f;
 float odstepW = 40.f;
 
@@ -165,7 +165,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
                 zmienKierunek = true;
                 break;
             }
-            // jezeli dotr? do do?u koniec gry
+            // jezeli dotrtarl do dolu koniec gry
             if (wrog.pobierzKsztalt().getPosition().y + wrog.pobierzKsztalt().getSize().y >= 530)
             {
                 koniecGry = true;
@@ -211,8 +211,8 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
 {
     // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
     for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();)
-    { 
-        pociskIt->ruszaj(deltaTime);    // ruch posisku
+    {
+        pociskIt->ruszaj(deltaTime); // ruch posisku
 
         bool pociskZniszczony = false;
 
@@ -249,11 +249,11 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
         {
             if (pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
             {
-                pociskIt = pociskiGracza.erase(pociskIt); // Usuń pocisk poza ekranem
+                pociskIt = pociskiGracza.erase(pociskIt);
             }
             else
             {
-                ++pociskIt; // Przejdź do następnego pocisku
+                ++pociskIt;
             }
         }
     }
@@ -331,7 +331,7 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, Us
             // pobranie znakow od uzytkownika
             ustawTekst.pobierzZnak(window);
 
-            // Jesli wcicnisto Enter
+            // zatwierdzenie tekstu enterem
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter && !ustawTekst.pobierzWejscie().empty())
                 return false;
         }
@@ -381,7 +381,7 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, Us
                 pomocAktywna = true;
                 // return;
             }
-            // strzaly gracza
+            // strzaly gracza po wciscnieciu spacji
             if (!graWstrzymana && event.key.code == sf::Keyboard::Space && czasOdOstatniegoStrzalu >= minimalnyCzasStrzalu)
             {
                 zasoby.dzwiekStrzalu.play();
@@ -398,33 +398,40 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, Us
 void zwiekszPoziom(Gracz &gracz)
 {
     aktualnyPoziom++;
-    interwalRuchu -= 0.2f;             // Zmniejszenie interwalu ruchu wrogow
-    minimalnyCzasStrzalu -= 0.1f;      // Zmniejszenie minimalnego czasu strzalu gracza
-    minimalnyCzasStrzaluWroga -= 0.1f; // Zmniejszenie minimalnego czasu strzalu wroga
+    interwalRuchu -= 0.2f;             // zmniejszenie interwalu ruchu wrogow
+    minimalnyCzasStrzalu -= 0.1f;      // zmniejszenei minimalnego strzalu
+    minimalnyCzasStrzaluWroga -= 0.1f; // zmniejszenie minimalnego strzalu
     if (interwalRuchu < 0.5f)
-        interwalRuchu = 0.5f; // Ustawienie minimalnego interwalu ruchu
+        interwalRuchu = 0.5f; // minimalny interwal ruchu
     if (minimalnyCzasStrzalu < 0.2f)
-        minimalnyCzasStrzalu = 0.2f; // Ustawienie minimalnego czasu strzalu
+        minimalnyCzasStrzalu = 0.2f; // minimalny czas strzalu
     if (minimalnyCzasStrzaluWroga < 0.2f)
-        minimalnyCzasStrzaluWroga = 0.2f; // Ustawienie minimalnego czasu strzalu wroga
+        minimalnyCzasStrzaluWroga = 0.2f; // minimalny czas strzalu wroga
 
-    gracz.dodajPunkty(aktualnyPoziom * 100);
+    gracz.dodajPunkty(aktualnyPoziom * 100); // bonusowe punkty za poziom
 }
 
 void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga)
 {
-    gracz.resetuj();
-    wrogowie.clear();
+    gracz.resetuj(); //powrot do pierwotnej pozycji
+    wrogowie.clear();   //czyszczenie wektorow by ponownie zaladowac
     pociskiGracza.clear();
     pociskiWroga.clear();
 
+    // jesli jest boss to przenosi reszte wrogow w dol o pozycjaBossaY
+    float pozycjaBossaY = 0.f;
+    if (aktualnyPoziom % 2 == 0)
+    {
+        pozycjaBossaY = 60.f;
+    }
     // tworzenie wrogow
     for (int kolumna = 0; kolumna < kolumny + aktualnyPoziom - 1; ++kolumna)
     {
+        std::cout << pozycjaBossaY << std::endl;
         for (int rzad = 0; rzad < wiersze + aktualnyPoziom - 1; ++rzad)
         {
-            float x = kolumna * odstepK + 95.f; // odstep miedzy kolumnanmi
-            float y = rzad * odstepW + 120;     // odstep miedzy rzedami
+            float x = kolumna * odstepK + 95.f;              // odstep miedzy kolumnanmi
+            float y = rzad * odstepW + 80.f + pozycjaBossaY; // odstep miedzy rzedami
             int typ;
             if (rzad == 0)
                 typ = 1;
@@ -436,13 +443,16 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
         }
     }
 
-    // dodanie bossan na koncu poziomu
+    // dodanie bossa na koncu poziomu
     if (aktualnyPoziom % 2 == 0)
     {
+        // ustawienie pozycji bossa na srodku
         float x1 = wrogowie.front().pobierzKsztalt().getPosition().x;
         float x2 = wrogowie.back().pobierzKsztalt().getPosition().x + wrogowie.back().pobierzKsztalt().getSize().x;
-        wrogowie.emplace_back((x1 + x2) / 2 - 80.f / 2, 50.f, 4); // Przykladowy boss
+        // boss - pozycja, typ-4, zycia Bossa
+        wrogowie.emplace_back((x1 + x2) / 2 - 80.f / 2, 80.f, 4, zyciaBossa + aktualnyPoziom);
     }
+    pozycjaBossaY = 0.f;
 }
 
 void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga)
@@ -452,10 +462,6 @@ void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk
         resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga);
         gracz.dodajZycie(aktualnyPoziom, zasoby.teksturaSerca);
         zwiekszPoziom(gracz);
-        if (bossPokonany || aktualnyPoziom % 2 != 0)
-        {
-            bossPokonany = false;
-        }
     }
 }
 
@@ -478,16 +484,17 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunika
 
     // Tworzenie ramki
     sf::RectangleShape ramka;
-    ramka.setSize(sf::Vector2f(920, 560));            // Rozmiar odpowiada wielkosci okna
-    ramka.setFillColor(sf::Color::Transparent);       // Wype�nienie przezroczyste
-    ramka.setOutlineThickness(20);                    // Grubo�� obramowania
-    ramka.setOutlineColor(sf::Color(255, 0, 0, 120)); // Kolor ramki
+    ramka.setSize(sf::Vector2f(window.getSize().x - 40.f, window.getSize().y - 40.f)); // rozmiar o 20 px mniej niz okno
+    ramka.setFillColor(sf::Color::Transparent);                                        // wypelnienie prostokata przezroczyste
+    ramka.setOutlineThickness(20);                                                     // grubosc obramowania prostokąta
+    ramka.setOutlineColor(sf::Color(255, 0, 0, 120));                                  // kolor obramowania - czerwony z przycemnieniem
     ramka.setPosition(20, 20);
 
+    //linia graniczna gracza
     sf::Vertex linia[] =
         {
-            sf::Vertex(sf::Vector2f(20, 550), sf::Color::Red),  // Punkt pocz�tkowy (czerwony)
-            sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) // Punkt ko�cowy (niebieski)
+            sf::Vertex(sf::Vector2f(20, 550), sf::Color::Red),  //1 punkt - czerwony
+            sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) //2 punkt - niebieski
         };
 
     while (graTrwa)
@@ -588,14 +595,13 @@ int main()
     komunikaty.pomoc.ustawPozycje(50.f, 30.f);
 
     komunikaty.koniecGry.ustawTekst("                     koniec gry\n\n\nWpisz swoj nick i wcisnij ENTER", sf::Color::Red, sf::Color::Black);
-    komunikaty.koniecGry.ustawPozycje(((window.getSize().x - komunikaty.koniecGry.pobierzTekst().getLocalBounds().width)/2), 120);
-
+    komunikaty.koniecGry.ustawPozycje(((window.getSize().x - komunikaty.koniecGry.pobierzTekst().getLocalBounds().width) / 2), 120);
 
     komunikaty.wyjscie.ustawTekst("Czy na pewno chcesz wyjsc? (T/N)", sf::Color::White, sf::Color::Black);
-    komunikaty.wyjscie.ustawPozycje(((window.getSize().x - komunikaty.wyjscie.pobierzTekst().getLocalBounds().width)/2), window.getSize().y/3);
+    komunikaty.wyjscie.ustawPozycje(((window.getSize().x - komunikaty.wyjscie.pobierzTekst().getLocalBounds().width) / 2), window.getSize().y / 3);
 
     komunikaty.F1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
-    komunikaty.F1.ustawPozycje(((window.getSize().x - komunikaty.F1.pobierzTekst().getLocalBounds().width)/2), 15.f);
+    komunikaty.F1.ustawPozycje(((window.getSize().x - komunikaty.F1.pobierzTekst().getLocalBounds().width) / 2), 15.f);
 
     StanGry stan = MENU;
     bool graTrwa = true;

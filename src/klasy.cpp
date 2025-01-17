@@ -200,7 +200,8 @@ void Gracz::resetuj()
 
 ///////////////////// WROG /////////////////////////
 
-Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycia(1)
+//przyejmuje 3 lub 4 argumenty, jesli 3 to zycia domyslne 1 ( wpliku nagłówkowym)
+Wrog::Wrog(float x, float y, int typ, int zycia) : typ(typ), czyStrzelil(false), zycia(zycia)
 {
     switch (typ)
     {
@@ -208,7 +209,6 @@ Wrog::Wrog(float x, float y, int typ) : typ(typ), czyStrzelil(false), zycia(1)
         ksztalt.setFillColor(sf::Color::Red);
         ksztalt.setSize(sf::Vector2f(50, 25));
         wartoscPunktow = 30;
-        zycia = 2;
         break;
     case 2:
         ksztalt.setFillColor(sf::Color::Green);
@@ -422,10 +422,6 @@ void Komunikat::ustawPozycje(float x, float y)
     tekstKomunikatu.setPosition(x, y);
 }
 
-// std::string Komunikat::pobierzTekst_string()
-// {
-//     return tekstKomunikatu.getString().toAnsiString();
-// }
 
 sf::Text Komunikat::pobierzTekst()
 {

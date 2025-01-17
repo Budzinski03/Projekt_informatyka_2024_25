@@ -1,6 +1,8 @@
 #include <SFML/Graphics.hpp>
 
 
+/////////////////// MENU ////////////////////////
+
 class Menu
 {
 public:
@@ -16,6 +18,9 @@ private:
     std::vector<sf::Text> opcje;
 };
 
+
+
+/////////////////// GRACZ ////////////////////////
 
 class Gracz
 {
@@ -42,10 +47,14 @@ private:
     sf::Text tekstZycia;
 };
 
+
+
+/////////////////// WROG ////////////////////////
+
 class Wrog
 {
 public:
-    Wrog(float x, float y, int typ);
+    Wrog(float x, float y, int typ, int zycia = 1);
     void rysuj(sf::RenderWindow &window) const;
     const sf::RectangleShape &pobierzKsztalt() const; // zwraca referencję
     void ustawPozycje(float x, float y);
@@ -65,6 +74,10 @@ private:
 };
 
 
+
+
+/////////////////// POCISK ////////////////////////
+
 class Pocisk
 {
 public:
@@ -83,6 +96,10 @@ private:
 };
 
 
+
+
+/////////////////// RANKING ////////////////////////
+
 class Ranking
 {
 public:
@@ -99,6 +116,11 @@ private:
     sf::Font czcionka;
 };
 
+
+
+
+/////////////////// KOMUNIKAT ////////////////////////
+
 class Komunikat
 {
 public:
@@ -113,6 +135,9 @@ private:
     sf::Text tekstKomunikatu;
 };
 
+
+
+/////////////////// USTAW TEKST ////////////////////////
 
 class UstawTekst
 {
