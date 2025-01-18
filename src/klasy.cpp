@@ -4,14 +4,13 @@
 #include "../include/klasy.h"
 #include <iostream>
 
-
 ///////////////////// MENU /////////////////////////
 
 Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
 {
-    std::string tekstOpcji[] = {"Nowa gra", "Ranking", "Wyjscie"};
+    std::string tekstOpcji[] = {"Nowa gra", "Ranking", "Ustawienia", "Wyjscie"};
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 4; i++)
     {
         sf::Text tekst;
         tekst.setFont(czcionka);
@@ -19,7 +18,7 @@ Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
         // jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
         tekst.setFillColor(i == wybranaOpcja ? sf::Color::Red : sf::Color::White);
         tekst.setString(tekstOpcji[i]);
-        tekst.setPosition(sf::Vector2f(960 / 8, 600 / (4) * (1 * i + 0.5)));
+        tekst.setPosition(sf::Vector2f(960 / 8, 600 / (5) * (1 * i + 0.5)));
         opcje.push_back(tekst);
     }
 }
@@ -57,7 +56,6 @@ int Menu::pobierzWybranaOpcje() const
 {
     return wybranaOpcja;
 }
-
 
 ///////////////////// GRACZ /////////////////////////
 
@@ -112,7 +110,7 @@ void Gracz::rysuj(sf::RenderWindow &window, sf::Font &czcionka)
             window.draw(serce);
         }
     }
-    else //jesli wiecej to wysweitla serce xilosc
+    else // jesli wiecej to wysweitla serce xilosc
     {
         tekstZycia.setFont(czcionka);
         tekstZycia.setFillColor(sf::Color::Red);
@@ -124,7 +122,7 @@ void Gracz::rysuj(sf::RenderWindow &window, sf::Font &czcionka)
     // rysowanie punktow
     tekstPunkty.setFont(czcionka);
     tekstPunkty.setString("Punkty: " + std::to_string(punkty));
-    //ulozenie tekstu w zaleznosci do wymiarow - ilosci punktow
+    // ulozenie tekstu w zaleznosci do wymiarow - ilosci punktow
     tekstPunkty.setPosition(window.getSize().x - (tekstPunkty.getLocalBounds().width) - 30, 15);
     window.draw(tekstPunkty);
 }
@@ -175,7 +173,6 @@ void Gracz::dodajZycie(int zycie, const sf::Texture &teksturaSerca)
     std::cout << zycie << std::endl;
     for (int i = 0; i < zycie; i++)
     {
-        std::cout << "dodano zycie\n";
         sf::Sprite serce;
         serce.setTexture(teksturaSerca);
         serce.setScale(0.05f, 0.05f);
@@ -197,10 +194,9 @@ void Gracz::resetuj()
     ksztalt.setPosition(480.f, 550.f); // Przykładowa pozycja startowa
 }
 
-
 ///////////////////// WROG /////////////////////////
 
-//przyejmuje 3 lub 4 argumenty, jesli 3 to zycia domyslne 1 ( wpliku nagłówkowym)
+// przyjmuje 3 lub 4 argumenty, jesli 3 - to zycia domyslne 1 ( wpliku nagłówkowym)
 Wrog::Wrog(float x, float y, int typ, int zycia) : typ(typ), czyStrzelil(false), zycia(zycia)
 {
     switch (typ)
@@ -222,9 +218,8 @@ Wrog::Wrog(float x, float y, int typ, int zycia) : typ(typ), czyStrzelil(false),
         break;
     case 4:
         ksztalt.setFillColor(sf::Color::Magenta);
-        ksztalt.setSize(sf::Vector2f(80, 40));
+        ksztalt.setSize(sf::Vector2f(130, 50));
         wartoscPunktow = 100;
-        zycia = 5; // wieksza liczba zyc
         break;
     default:
         ksztalt.setFillColor(sf::Color::White);
@@ -233,7 +228,6 @@ Wrog::Wrog(float x, float y, int typ, int zycia) : typ(typ), czyStrzelil(false),
         break;
     }
     ksztalt.setPosition(x, y);
-    std::cout << zycia << '\n';
 }
 
 void Wrog::rysuj(sf::RenderWindow &window) const
@@ -266,18 +260,17 @@ int Wrog::pobierzTyp()
     return typ;
 }
 
-
 bool Wrog::stracZycie()
 {
     if (zycia > 1)
     {
-        zycia --;
-        std::cout<<"odejmuje zycie  Zycia: "<<zycia<<std::endl;
+        zycia--;
+        std::cout << "odejmuje zycie  Zycia: " << zycia << std::endl;
         return true;
     }
-    std::cout<<"Zwracam false\n";
-    return false;
+    std::cout << "Zwracam false\n";
 
+    return false;
 }
 
 int Wrog::pobierzZycia()
@@ -325,8 +318,6 @@ int Pocisk::pobierzObrazenia() const
 {
     return obrazenia;
 }
-
-
 
 ///////////////////// RANKING /////////////////////////
 
@@ -393,8 +384,6 @@ void Ranking::rysuj(sf::RenderWindow &window)
     window.draw(tekstRanking);
 }
 
-
-
 ///////////////////// KOMUNIKAT /////////////////////////
 
 Komunikat::Komunikat(const sf::Font &czcionka)
@@ -422,12 +411,10 @@ void Komunikat::ustawPozycje(float x, float y)
     tekstKomunikatu.setPosition(x, y);
 }
 
-
 sf::Text Komunikat::pobierzTekst()
 {
     return tekstKomunikatu;
 }
-
 
 ///////////////////// USTAW TEKST /////////////////////////
 
@@ -511,3 +498,142 @@ std::string UstawTekst::pobierzWejscie() const
 // {
 //     return wejscie.empty();
 // }
+
+/////////////////// USTAWIENIA ///////////////////////
+
+Ustawienia::Ustawienia(const sf::Font &czcionka, Zasoby &zasoby)
+    : zasoby(zasoby), wybranaOpcja(0)
+{
+
+    // konfiguracja ramki
+    sf::Vector2f wymiarRamki(640.f, 400.f);
+    ramka.setSize(wymiarRamki);
+    ramka.setFillColor(sf::Color::Transparent);
+    ramka.setOutlineThickness(15.f);
+    ramka.setOutlineColor(sf::Color::Red);
+    ramka.setPosition(160.f, 50.f);
+
+    // poczatkowe ustawienie tla w oknie
+    wybraneTlo.setTexture(zasoby.teksturaTlo1);
+    wybraneTlo.setScale(
+        wymiarRamki.x / zasoby.teksturaTlo1.getSize().x,
+        wymiarRamki.y / zasoby.teksturaTlo1.getSize().y);
+    wybraneTlo.setPosition(ramka.getPosition());
+
+    // konfiguracja instrukcji
+    instrukcja.setFont(czcionka);
+    instrukcja.setCharacterSize(32);
+    instrukcja.setFillColor(sf::Color::White);
+    instrukcja.setString("uzyj strzalek lewo/prawo, aby zmienic tlo. Enter, aby zatwierdzic");
+    instrukcja.setPosition((960.f - instrukcja.getLocalBounds().width) / 2, 520);
+
+    // konfiguracja strzalek - nieregularny ksztalt
+    strzalkaLewa.setPointCount(7);                       // strzalka zlozona z 7pkt
+    strzalkaLewa.setPoint(0, sf::Vector2f(0.f, 25.f));   // grot
+    strzalkaLewa.setPoint(1, sf::Vector2f(50.f, 0.f));   // dol grotu
+    strzalkaLewa.setPoint(2, sf::Vector2f(50.f, 15.f));  // koniec linii - dol
+    strzalkaLewa.setPoint(3, sf::Vector2f(100.f, 15.f)); // poczatek linii - dol
+    strzalkaLewa.setPoint(4, sf::Vector2f(100.f, 35.f)); // poczatek linii - gora
+    strzalkaLewa.setPoint(5, sf::Vector2f(50.f, 35.f));  // koniec linii - gora
+    strzalkaLewa.setPoint(6, sf::Vector2f(50.f, 50.f));  // gora grotu
+    strzalkaLewa.setOutlineThickness(3.f);
+    strzalkaLewa.setOutlineColor(sf::Color::White);
+    strzalkaLewa.setPosition(30.f, (600.f - strzalkaLewa.getLocalBounds().height) / 2);
+
+    strzalkaPrawa.setPointCount(7);
+    strzalkaPrawa.setPoint(0, sf::Vector2f(0.f, 15.f));   // poczatek linii dol
+    strzalkaPrawa.setPoint(1, sf::Vector2f(50.f, 15.f));  // koniec linii dol
+    strzalkaPrawa.setPoint(2, sf::Vector2f(50.f, 0.f));   // dol grotu
+    strzalkaPrawa.setPoint(3, sf::Vector2f(100.f, 25.f)); // grot
+    strzalkaPrawa.setPoint(4, sf::Vector2f(50.f, 50.f));  // gora grotu
+    strzalkaPrawa.setPoint(5, sf::Vector2f(50.f, 35.f));  // koniec linii - gora
+    strzalkaPrawa.setPoint(6, sf::Vector2f(0.f, 35.f));   // poczatek linii - gora
+    strzalkaPrawa.setOutlineThickness(3.f);
+    strzalkaPrawa.setOutlineColor(sf::Color::White);
+    strzalkaPrawa.setPosition(830.f, (600.f - strzalkaPrawa.getLocalBounds().height) / 2);
+}
+
+void Ustawienia::rysuj(sf::RenderWindow &window)
+{
+    // sprawdzenie czy mozna przesunac w lewo, jesli tak-strzalka czerwona, nie-szara
+    if (wybranaOpcja > 0)
+        strzalkaLewa.setFillColor(sf::Color::Red);
+    else
+        strzalkaLewa.setFillColor(sf::Color(128, 128, 128)); //kolor szary
+
+    //tak samo jak wyzej
+    if (wybranaOpcja < 3)
+        strzalkaPrawa.setFillColor(sf::Color::Red);
+    else
+        strzalkaPrawa.setFillColor(sf::Color(128, 128, 128));
+
+    //rysowanie elementow
+    window.draw(wybraneTlo);
+    window.draw(ramka);
+    window.draw(instrukcja);
+    window.draw(strzalkaLewa);
+    window.draw(strzalkaPrawa);
+}
+
+void Ustawienia::przesunWLewo()
+{
+    //wykonuje sie jesli wybrana opcja wieksza od 0
+    if (wybranaOpcja > 0)
+    {
+        wybranaOpcja--;
+        switch (wybranaOpcja)
+        {
+        case 0:
+            wybraneTlo.setTexture(zasoby.teksturaTlo1);
+            break;
+        case 1:
+            wybraneTlo.setTexture(zasoby.teksturaTlo2);
+            break;
+        case 2:
+            wybraneTlo.setTexture(zasoby.teksturaTlo3);
+            break;
+        //"case 3:" bedzie potrzabne gdy bedzie potrzeba dodania nwoego tla
+        // case 3:
+        //     wybraneTlo.setTexture(zasoby.blackTexture); // przypisanie czarnej tekstury break;
+        //     break;
+        default:
+            break;
+        }
+    }
+    wybraneTlo.setScale(
+        ramka.getSize().x / wybraneTlo.getTexture()->getSize().x,
+        ramka.getSize().y / wybraneTlo.getTexture()->getSize().y);
+        // -> poniewaz getTexture() zwraca wskaznik sf::Texture*
+}
+
+void Ustawienia::przesunWPrawo()
+{
+    if (wybranaOpcja < 3)
+    {
+        wybranaOpcja++;
+        switch (wybranaOpcja)
+        {
+        //pominiete case 0, bo nie mozliwosci przejcia do 0 dodajac 1
+        case 1:
+            wybraneTlo.setTexture(zasoby.teksturaTlo2); //zmiana tla na wybrane
+            break;
+        case 2:
+            wybraneTlo.setTexture(zasoby.teksturaTlo3);
+            break;
+        case 3:
+            wybraneTlo.setTexture(zasoby.czarnaTekstura); // przypisanie czarnej tekstury
+            break;
+        default:
+            break;
+        }
+        wybraneTlo.setScale(
+            ramka.getSize().x / wybraneTlo.getTexture()->getSize().x,
+            ramka.getSize().y / wybraneTlo.getTexture()->getSize().y);
+        // -> poniewaz getTexture() zwraca wskaznik sf::Texture*
+    }
+}
+
+int Ustawienia::pobierzWybranaOpcje() const
+{
+    return wybranaOpcja;
+}

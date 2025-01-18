@@ -1,12 +1,27 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 
+/////////////////// ZASOBY /////////////////////
+struct Zasoby
+{
+    sf::Font czcionka;
+    sf::Texture teksturaSerca;
+    sf::SoundBuffer bufferStrzalu;
+    sf::Sound dzwiekStrzalu;
+    sf::Texture teksturaTlo1;
+    sf::Texture teksturaTlo2;
+    sf::Texture teksturaTlo3;
+    sf::Sprite tlo;
+    sf::Image czarneTlo;
+    sf::Texture czarnaTekstura;
+};
 
 /////////////////// MENU ////////////////////////
 
 class Menu
 {
 public:
-    Menu(const sf::Font &);
+    Menu(const sf::Font &czcionka);
     void rysuj(sf::RenderWindow &window);
     void przesunWGore();
     void przesunWDol();
@@ -17,8 +32,6 @@ private:
     sf::Font czcionka;
     std::vector<sf::Text> opcje;
 };
-
-
 
 /////////////////// GRACZ ////////////////////////
 
@@ -47,8 +60,6 @@ private:
     sf::Text tekstZycia;
 };
 
-
-
 /////////////////// WROG ////////////////////////
 
 class Wrog
@@ -60,21 +71,18 @@ public:
     void ustawPozycje(float x, float y);
     void przesun(float dx, float dy);
     int pobierzPunkty();
-    bool czyStrzelil; //flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
+    bool czyStrzelil; // flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
     int pobierzTyp();
     bool stracZycie();
     int pobierzZycia();
 
 private:
     sf::RectangleShape ksztalt;
-    int typ; //rodzaj wroga
+    int typ; // rodzaj wroga
     int wartoscPunktow;
     int zycia;
     int obrazenia;
 };
-
-
-
 
 /////////////////// POCISK ////////////////////////
 
@@ -82,7 +90,7 @@ class Pocisk
 {
 public:
     Pocisk(float x, float y, float kierunek);
-    Pocisk(float x, float y, float kierunek, sf::Color kolor, int typWroga); //konstruktor dla wrogow
+    Pocisk(float x, float y, float kierunek, sf::Color kolor, int typWroga); // konstruktor dla wrogow
     void ruszaj(float deltaTime);
     void rysuj(sf::RenderWindow &window);
     sf::FloatRect pobierzObszar() const;
@@ -92,11 +100,8 @@ private:
     sf::RectangleShape ksztalt;
     float predkosc;
     float kierunek; //-1 dla gracza +1 dla wroga
-    int obrazenia; //w zaleznosci od wroga
+    int obrazenia;  // w zaleznosci od wroga
 };
-
-
-
 
 /////////////////// RANKING ////////////////////////
 
@@ -116,9 +121,6 @@ private:
     sf::Font czcionka;
 };
 
-
-
-
 /////////////////// KOMUNIKAT ////////////////////////
 
 class Komunikat
@@ -128,14 +130,12 @@ public:
     void ustawTekst(const std::string &tekst, const sf::Color &kolor, const sf::Color &kolorObramowania);
     void rysuj(sf::RenderWindow &window);
     void ustawPozycje(float, float);
-    //std::string pobierzTekst_string();
+    // std::string pobierzTekst_string();
     sf::Text pobierzTekst();
 
 private:
     sf::Text tekstKomunikatu;
 };
-
-
 
 /////////////////// USTAW TEKST ////////////////////////
 
@@ -153,6 +153,28 @@ public:
     void czysc();
     sf::Text pobierzTekst();
     std::string pobierzWejscie() const;
-    void wysrodkujTekst(); 
+    void wysrodkujTekst();
     bool czyPusteWejscie();
+};
+
+/////////////////// USTAWIENIA ///////////////////////
+
+class Ustawienia
+{
+public:
+    Ustawienia(const sf::Font &czcionka, Zasoby &zasoby);
+    void rysuj(sf::RenderWindow &window);
+    void przesunWLewo();
+    void przesunWPrawo();
+    int pobierzWybranaOpcje() const;
+    void ustawOpcje();
+
+private:
+    Zasoby &zasoby;
+    sf::RectangleShape ramka;
+    sf::Sprite wybraneTlo;
+    sf::Text instrukcja;
+    int wybranaOpcja;
+    sf::ConvexShape strzalkaLewa;
+    sf::ConvexShape strzalkaPrawa;
 };

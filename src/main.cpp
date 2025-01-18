@@ -9,7 +9,8 @@ enum StanGry
 {
     MENU,
     GRA,
-    RANKING
+    RANKING,
+    USTAWIENIA
 };
 
 struct Komunikaty
@@ -20,14 +21,7 @@ struct Komunikaty
     Komunikat F1;
 };
 
-struct Zasoby
-{
-    sf::Font czcionka;
-    sf::Texture teksturaSerca;
-    sf::SoundBuffer bufferStrzalu;
-    sf::Sound dzwiekStrzalu;
-};
-
+// globalny obiekt zasobow, deklaracja jest w klasy.h
 Zasoby zasoby;
 
 // flagi
@@ -37,11 +31,11 @@ bool koniecGry = false;
 bool wyjscieAktywne = false;
 
 int aktualnyPoziom = 1;
-int zyciaBossa = 5;
+int zyciaBossa = 4; // zycia bossa ladowane sa jako zycia bossa+aktualnyPoziom
 
 // parametry
 float kierunek = 1.0f;     // predkosc wrogow w poziomie
-float interwalRuchu = 3.f; // wrogowie przesuwani co 1s
+float interwalRuchu = 3.f; // wrogowie przesuwani co 3s
 float czasOdOstatniegoRuchu = 0.0f;
 float czasOdOstatniegoStrzalu = 1.5f;
 float minimalnyCzasStrzalu = 0.6f;
@@ -49,8 +43,8 @@ float czasOdOstatniegoStrzaluWroga = 0.f;
 float minimalnyCzasStrzaluWroga = 1.0f;
 
 // parametry wrogow
-int kolumny = 1;
-int wiersze = 1;
+int kolumny = 7;
+int wiersze = 3;
 float odstepK = 80.f;
 float odstepW = 40.f;
 
@@ -67,6 +61,25 @@ bool zaladuj(Zasoby &zasoby)
         std::cout << "Nie udalo sie zaladowac obrazka serca!" << std::endl;
         return false;
     }
+    if (!zasoby.teksturaTlo1.loadFromFile("../assets/tlo1.png"))
+    {
+        std::cout << "Nie udalo sie zaladowac tla nr 1";
+        return false;
+    }
+    if (!zasoby.teksturaTlo2.loadFromFile("../assets/tlo2.png"))
+    {
+        std::cout << "Nie udalo sie zaladowac tla nr 2";
+        return false;
+    }
+    if (!zasoby.teksturaTlo3.loadFromFile("../assets/tlo3.png"))
+    {
+        std::cout << "Nie udalo sie zaladowac tla nr 3";
+        return false;
+    }
+    //tworzenie czarnej tekstury do tla
+    zasoby.czarneTlo.create(960, 600, sf::Color::Black); 
+    zasoby.czarnaTekstura.loadFromImage(zasoby.czarneTlo);
+
     if (!zasoby.bufferStrzalu.loadFromFile("../assets/strzal.wav"))
     {
         std::cout << "Nie udalo sie zaladowac dzwieku strzalu!" << std::endl;
@@ -105,6 +118,10 @@ void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &
                 }
                 else if (opcja == 2)
                 {
+                    stan = StanGry::USTAWIENIA;
+                }
+                else if (opcja == 3)
+                {
                     window.close();
                     graTrwa = false;
                 }
@@ -112,7 +129,61 @@ void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &
         }
     }
     window.clear();
+    window.draw(zasoby.tlo);
     menu.rysuj(window);
+    window.display();
+}
+
+void wyswietlUstawienia(sf::RenderWindow &window, StanGry &stan, Ustawienia &ustawienia, bool &graTrwa)
+{
+    sf::Event event;
+    while (window.pollEvent(event))
+    {
+        if (event.type == sf::Event::Closed)
+        {
+            graTrwa = false;
+            window.close();
+        }
+
+        if (event.type == sf::Event::KeyPressed)
+        {
+            if (event.key.code == sf::Keyboard::Left)
+            {
+                ustawienia.przesunWLewo();
+            }
+            else if (event.key.code == sf::Keyboard::Right)
+            {
+                ustawienia.przesunWPrawo();
+            }
+            else if (event.key.code == sf::Keyboard::Enter)
+            {
+                // po wciesnieciu enter tlo jest ustawiane na nowe, pobierajac aktualnie wybrane tlo w ustawieniach
+                if (ustawienia.pobierzWybranaOpcje() == 0)
+                {
+                    zasoby.tlo.setTexture(zasoby.teksturaTlo1);
+                }
+                else if (ustawienia.pobierzWybranaOpcje() == 1)
+                {
+                    zasoby.tlo.setTexture(zasoby.teksturaTlo2);
+                }
+                else if (ustawienia.pobierzWybranaOpcje() == 2)
+                {
+                    zasoby.tlo.setTexture(zasoby.teksturaTlo3);
+                }
+                else if (ustawienia.pobierzWybranaOpcje() == 3)
+                {
+                    zasoby.tlo.setTexture(zasoby.czarnaTekstura);
+                }
+                stan = MENU; //po zatwierdzeniu powrot do menu
+            }
+            else if (event.key.code == sf::Keyboard::Escape)
+            {
+                stan = StanGry::MENU; //powrot do menu bez zmian
+            }
+        }
+    }
+    window.clear();
+    ustawienia.rysuj(window);
     window.display();
 }
 
@@ -154,13 +225,13 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
                 przesunietoPredzej = true;
             }
         }
-
+        // zerowanie flagi przesuniecia
         zmienKierunek = false;
         // sprawdzenie czy ktorys dotarl do krawedzi
         for (auto &wrog : wrogowie)
         {
             if (wrog.pobierzKsztalt().getPosition().x <= 15 ||
-                wrog.pobierzKsztalt().getPosition().x + wrog.pobierzKsztalt().getSize().x >= 945)
+                wrog.pobierzKsztalt().getPosition().x + wrog.pobierzKsztalt().getSize().x >= 930)
             {
                 zmienKierunek = true;
                 break;
@@ -221,17 +292,14 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
             // Sprawdzenie kolizji pocisku z wrogiem
             if (pociskIt->pobierzObszar().intersects(sf::FloatRect(wrogIt->pobierzKsztalt().getPosition(), wrogIt->pobierzKsztalt().getSize())))
             {
-                std::cout << "trafiono\n";
                 if (!wrogIt->stracZycie())
                 {
-                    std::cout << "dodaje punkty";
-                    gracz.dodajPunkty(wrogIt->pobierzPunkty()); // dodanie punktow w zaleznosci od wartosci wroga
+                    gracz.dodajPunkty(wrogIt->pobierzPunkty() * 0.5 * aktualnyPoziom); // dodanie punktow w zaleznosci od wartosci wroga
                     // jesli kolizja to wrog jest niszczony
                     wrogIt = wrogowie.erase(wrogIt);
                 }
                 else
                 {
-                    std::cout << "wrog traci zycia: " << wrogIt->pobierzZycia() << std::endl;
                     ++wrogIt;
                 }
                 // po kolizji pocisk jest niszczony
@@ -399,8 +467,8 @@ void zwiekszPoziom(Gracz &gracz)
 {
     aktualnyPoziom++;
     interwalRuchu -= 0.2f;             // zmniejszenie interwalu ruchu wrogow
-    minimalnyCzasStrzalu -= 0.1f;      // zmniejszenei minimalnego strzalu
-    minimalnyCzasStrzaluWroga -= 0.1f; // zmniejszenie minimalnego strzalu
+    minimalnyCzasStrzalu -= 0.2f;      // zmniejszenei minimalnego strzalu
+    minimalnyCzasStrzaluWroga -= 0.2f; // zmniejszenie minimalnego strzalu
     if (interwalRuchu < 0.5f)
         interwalRuchu = 0.5f; // minimalny interwal ruchu
     if (minimalnyCzasStrzalu < 0.2f)
@@ -413,10 +481,11 @@ void zwiekszPoziom(Gracz &gracz)
 
 void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga)
 {
-    gracz.resetuj(); //powrot do pierwotnej pozycji
-    wrogowie.clear();   //czyszczenie wektorow by ponownie zaladowac
+    gracz.resetuj();  // powrot do pierwotnej pozycji
+    wrogowie.clear(); // czyszczenie wektorow by ponownie zaladowac
     pociskiGracza.clear();
     pociskiWroga.clear();
+    kierunek = 1.0f; // zerowanie kierunku, aby wrogowie przesuwali sie w prawo
 
     // jesli jest boss to przenosi reszte wrogow w dol o pozycjaBossaY
     float pozycjaBossaY = 0.f;
@@ -427,11 +496,10 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
     // tworzenie wrogow
     for (int kolumna = 0; kolumna < kolumny + aktualnyPoziom - 1; ++kolumna)
     {
-        std::cout << pozycjaBossaY << std::endl;
         for (int rzad = 0; rzad < wiersze + aktualnyPoziom - 1; ++rzad)
         {
-            float x = kolumna * odstepK + 95.f;              // odstep miedzy kolumnanmi
-            float y = rzad * odstepW + 80.f + pozycjaBossaY; // odstep miedzy rzedami
+            float x = kolumna * odstepK + 95.f;              // odstep miedzy kolumnanmi +95
+            float y = rzad * odstepW + 90.f + pozycjaBossaY; // odstep miedzy rzedami, jesli jest boss to przesunieci w dol
             int typ;
             if (rzad == 0)
                 typ = 1;
@@ -450,7 +518,7 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
         float x1 = wrogowie.front().pobierzKsztalt().getPosition().x;
         float x2 = wrogowie.back().pobierzKsztalt().getPosition().x + wrogowie.back().pobierzKsztalt().getSize().x;
         // boss - pozycja, typ-4, zycia Bossa
-        wrogowie.emplace_back((x1 + x2) / 2 - 80.f / 2, 80.f, 4, zyciaBossa + aktualnyPoziom);
+        wrogowie.emplace_back((x1 + x2) / 2 - 130.f / 2, 80.f, 4, zyciaBossa + aktualnyPoziom);
     }
     pozycjaBossaY = 0.f;
 }
@@ -490,11 +558,11 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunika
     ramka.setOutlineColor(sf::Color(255, 0, 0, 120));                                  // kolor obramowania - czerwony z przycemnieniem
     ramka.setPosition(20, 20);
 
-    //linia graniczna gracza
+    // linia graniczna gracza
     sf::Vertex linia[] =
         {
-            sf::Vertex(sf::Vector2f(20, 550), sf::Color::Red),  //1 punkt - czerwony
-            sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) //2 punkt - niebieski
+            sf::Vertex(sf::Vector2f(20, 550), sf::Color::Red),  // 1 punkt - czerwony
+            sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) // 2 punkt - niebieski
         };
 
     while (graTrwa)
@@ -534,6 +602,7 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunika
 
         // Rysowanie
         window.clear();
+        window.draw(zasoby.tlo);
         window.draw(ramka);
         window.draw(linia, 2, sf::Lines);
         gracz.rysuj(window, zasoby.czcionka);
@@ -609,6 +678,8 @@ int main()
     Menu menu(zasoby.czcionka);
     Ranking ranking("ranking.txt", zasoby.czcionka);
 
+    Ustawienia ustawienia(zasoby.czcionka, zasoby);
+
     while (graTrwa)
     {
         switch (stan)
@@ -622,6 +693,9 @@ int main()
             break;
         case GRA:
             uruchomGre(window, stan, graTrwa, komunikaty, ranking);
+            break;
+        case USTAWIENIA:
+            wyswietlUstawienia(window, stan, ustawienia, graTrwa);
             break;
         default:
             break;
