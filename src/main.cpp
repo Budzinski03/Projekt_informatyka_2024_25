@@ -89,7 +89,7 @@ bool zaladuj(Zasoby &zasoby)
     return true;
 }
 
-void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &menu)
+void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, Menu &menu)
 {
     sf::Event event;
     while (window.pollEvent(event))
@@ -97,7 +97,6 @@ void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &
         if (event.type == sf::Event::Closed)
         {
             window.close();
-            graTrwa = false;
         }
         if (event.type == sf::Event::KeyPressed)
         {
@@ -123,7 +122,6 @@ void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &
                 else if (opcja == 3)
                 {
                     window.close();
-                    graTrwa = false;
                 }
             }
         }
@@ -134,14 +132,13 @@ void wyswietlMenu(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Menu &
     window.display();
 }
 
-void wyswietlUstawienia(sf::RenderWindow &window, StanGry &stan, Ustawienia &ustawienia, bool &graTrwa)
+void wyswietlUstawienia(sf::RenderWindow &window, StanGry &stan, Ustawienia &ustawienia)
 {
     sf::Event event;
     while (window.pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
         {
-            graTrwa = false;
             window.close();
         }
 
@@ -187,7 +184,7 @@ void wyswietlUstawienia(sf::RenderWindow &window, StanGry &stan, Ustawienia &ust
     window.display();
 }
 
-void wyswietlRanking(sf::RenderWindow &window, StanGry &stan, bool &GraTrwa, Ranking &ranking)
+void wyswietlRanking(sf::RenderWindow &window, StanGry &stan, Ranking &ranking)
 {
     sf::Event event;
     while (window.pollEvent(event))
@@ -195,7 +192,6 @@ void wyswietlRanking(sf::RenderWindow &window, StanGry &stan, bool &GraTrwa, Ran
         if (event.type == sf::Event::Closed)
         {
             window.close();
-            GraTrwa = false;
         }
         if (event.type == sf::Event::KeyPressed)
         {
@@ -384,14 +380,13 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
     }
 }
 
-bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, bool &graTrwa, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, Gracz &gracz, std::vector<Pocisk> &pociskiGracza)
+bool obslugaZdarzen(sf::RenderWindow &window, sf::Event event, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, Gracz &gracz, std::vector<Pocisk> &pociskiGracza)
 {
     while (window.pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
         {
             window.close();
-            graTrwa = false;
         }
         // obsluga przyciskow gdy gra jest aktywna
         if (koniecGry)
@@ -533,7 +528,7 @@ void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk
     }
 }
 
-void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunikaty &komunikaty, Ranking &ranking)
+void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty, Ranking &ranking)
 {
     Gracz gracz(zasoby.teksturaSerca);
     std::vector<Wrog> wrogowie;
@@ -565,7 +560,7 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunika
             sf::Vertex(sf::Vector2f(940, 550), sf::Color::Blue) // 2 punkt - niebieski
         };
 
-    while (graTrwa)
+    while (window.isOpen())
     {
         float deltaTime = zegar.restart().asSeconds();
         // odswiezanie tylko gdy gra jest aktywna
@@ -578,7 +573,7 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, bool &graTrwa, Komunika
 
         sf::Event event;
         // jesli zwroci false, koniec gry, i okno do wpisania nicku
-        if (!obslugaZdarzen(window, event, graTrwa, ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza))
+        if (!obslugaZdarzen(window, event, ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza))
         {
             std::string nick = ustawTekst.pobierzWejscie();
             ranking.dodajWynik(nick, gracz.pobierzPunkty());
@@ -673,29 +668,28 @@ int main()
     komunikaty.F1.ustawPozycje(((window.getSize().x - komunikaty.F1.pobierzTekst().getLocalBounds().width) / 2), 15.f);
 
     StanGry stan = MENU;
-    bool graTrwa = true;
 
     Menu menu(zasoby.czcionka);
     Ranking ranking("ranking.txt", zasoby.czcionka);
 
     Ustawienia ustawienia(zasoby.czcionka, zasoby);
 
-    while (graTrwa)
+    while (window.isOpen())
     {
         switch (stan)
         {
         case MENU:
             aktualnyPoziom = 1;
-            wyswietlMenu(window, stan, graTrwa, menu);
+            wyswietlMenu(window, stan, menu);
             break;
         case RANKING:
-            wyswietlRanking(window, stan, graTrwa, ranking);
+            wyswietlRanking(window, stan, ranking);
             break;
         case GRA:
-            uruchomGre(window, stan, graTrwa, komunikaty, ranking);
+            uruchomGre(window, stan, komunikaty, ranking);
             break;
         case USTAWIENIA:
-            wyswietlUstawienia(window, stan, ustawienia, graTrwa);
+            wyswietlUstawienia(window, stan, ustawienia);
             break;
         default:
             break;
