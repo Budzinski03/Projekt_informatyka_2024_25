@@ -49,6 +49,9 @@ public:
     int pobierzPunkty() const;
     void dodajZycie(int zycie, const sf::Texture &teksturaSerca);
     void resetuj();
+    void ustawPozycje(float x, float y);
+    void ustawPunkty(int pobranePunkty);
+    void ustawZycia(int pobraneZycia, sf::Texture &teksturaSerca);
 
 private:
     sf::RectangleShape ksztalt;
@@ -72,7 +75,7 @@ public:
     void przesun(float dx, float dy);
     int pobierzPunkty();
     bool czyStrzelil; // flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
-    int pobierzTyp();
+    int pobierzTyp() const;
     bool stracZycie();
     int pobierzZycia();
 

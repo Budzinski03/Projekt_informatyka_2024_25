@@ -7,16 +7,16 @@
             "command": "g++",
             "args": [
                 "-g",
-                "src/main.cpp",                // Główna aplikacja
-                "src/klasy.cpp",               // Inne pliki źródłowe
-                "-I", "include",               // Ścieżka do katalogu z nagłówkami
-                "-I", "C:/msys64/mingw64/include", // Dodatkowa ścieżka do nagłówków SFML
-                "-L", "C:/msys64/mingw64/lib",     // Ścieżka do bibliotek SFML
+                "src/main.cpp",                // glowna aplikacja
+                "src/klasy.cpp",               // sciezka do mojej klasy
+                "-I", "include",               // sciezka do katalogu z naglowkami
+                "-I", "C:/msys64/mingw64/include", // dodatkowa sciezka do naglowkow SFML
+                "-L", "C:/msys64/mingw64/lib",     // sciezka do biblioteki SFML
                 "-lsfml-graphics", 
                 "-lsfml-window", 
                 "-lsfml-system",
                 "-lsfml-audio",
-                "-o", "src/${fileBasenameNoExtension}.exe"  // Wynikowy plik wykonywalny w folderze src
+                "-o", "src/${fileBasenameNoExtension}.exe"  //nazwa pliku wykonywalnego
             ],
             "group": {
                 "kind": "build",

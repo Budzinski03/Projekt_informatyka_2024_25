@@ -17,6 +17,8 @@ Menu::Menu(const sf::Font &czcionka) : wybranaOpcja(0)
         tekst.setCharacterSize(40);
         // jesli i = wybranaOpcja to kolor czerowny, jesli nie to bialy
         tekst.setFillColor(i == wybranaOpcja ? sf::Color::Red : sf::Color::White);
+        tekst.setOutlineThickness(3.f);
+        tekst.setOutlineColor(sf::Color::Black);
         tekst.setString(tekstOpcji[i]);
         tekst.setPosition(sf::Vector2f(960 / 8, 600 / (5) * (1 * i + 0.5)));
         opcje.push_back(tekst);
@@ -110,7 +112,7 @@ void Gracz::rysuj(sf::RenderWindow &window, sf::Font &czcionka)
             window.draw(serce);
         }
     }
-    else // jesli wiecej to wysweitla serce xilosc
+    else // jesli wiecej to wyswietla serce x ilosc
     {
         tekstZycia.setFont(czcionka);
         tekstZycia.setFillColor(sf::Color::Red);
@@ -122,6 +124,7 @@ void Gracz::rysuj(sf::RenderWindow &window, sf::Font &czcionka)
     // rysowanie punktow
     tekstPunkty.setFont(czcionka);
     tekstPunkty.setString("Punkty: " + std::to_string(punkty));
+    tekstPunkty.setCharacterSize(40);
     // ulozenie tekstu w zaleznosci do wymiarow - ilosci punktow
     tekstPunkty.setPosition(window.getSize().x - (tekstPunkty.getLocalBounds().width) - 30, 15);
     window.draw(tekstPunkty);
@@ -170,16 +173,15 @@ int Gracz::pobierzPunkty() const
 
 void Gracz::dodajZycie(int zycie, const sf::Texture &teksturaSerca)
 {
-    std::cout << zycie << std::endl;
     for (int i = 0; i < zycie; i++)
     {
         sf::Sprite serce;
         serce.setTexture(teksturaSerca);
         serce.setScale(0.05f, 0.05f);
 
-        // Obliczenie pozycji nowego serca na podstawie istniejących serc
-        float xOffset = 20 + serca.size() * 30; // Nowa pozycja zależna od liczby istniejących serc
-        serce.setPosition(xOffset, 20);
+        // obliczenie pozycji serca na podstawie istniejacych serc
+        float x = 20 + serca.size() * 30;
+        serce.setPosition(x, 20);
 
         serca.push_back(serce);
     }
@@ -190,8 +192,34 @@ void Gracz::dodajZycie(int zycie, const sf::Texture &teksturaSerca)
 
 void Gracz::resetuj()
 {
-    // Resetuje pozycję gracza
-    ksztalt.setPosition(480.f, 550.f); // Przykładowa pozycja startowa
+    //zresetowanie pozcyji gracza
+    ksztalt.setPosition(480.f, 550.f);
+}
+
+void Gracz::ustawPozycje(float x, float y)
+{
+    ksztalt.setPosition(x, y);
+}
+
+void Gracz::ustawPunkty(int pobranePunkty)
+{
+    punkty = pobranePunkty;
+}
+
+void Gracz::ustawZycia(int pobraneZycia, sf::Texture &teksturaSerca)
+{
+    liczbaZyc = pobraneZycia;
+
+    serca.clear(); //czyszczenie wektora
+    //dodanie nowych serc
+    for (int i = 0; i < liczbaZyc; ++i)
+    {
+        sf::Sprite serce;
+        serce.setTexture(teksturaSerca);
+        serce.setScale(0.05f, 0.05f);
+        serce.setPosition(20 + i * 30, 20);
+        serca.push_back(serce);
+    }
 }
 
 ///////////////////// WROG /////////////////////////
@@ -203,22 +231,22 @@ Wrog::Wrog(float x, float y, int typ, int zycia) : typ(typ), czyStrzelil(false),
     {
     case 1:
         ksztalt.setFillColor(sf::Color::Red);
-        ksztalt.setSize(sf::Vector2f(50, 25));
+        ksztalt.setSize(sf::Vector2f(50, 20));
         wartoscPunktow = 30;
         break;
     case 2:
         ksztalt.setFillColor(sf::Color::Green);
-        ksztalt.setSize(sf::Vector2f(50, 25));
+        ksztalt.setSize(sf::Vector2f(50, 20));
         wartoscPunktow = 20;
         break;
     case 3:
         ksztalt.setFillColor(sf::Color::Blue);
-        ksztalt.setSize(sf::Vector2f(50, 25));
+        ksztalt.setSize(sf::Vector2f(50, 20));
         wartoscPunktow = 10;
         break;
     case 4:
         ksztalt.setFillColor(sf::Color::Magenta);
-        ksztalt.setSize(sf::Vector2f(130, 50));
+        ksztalt.setSize(sf::Vector2f(130, 40));
         wartoscPunktow = 100;
         break;
     default:
@@ -237,7 +265,7 @@ void Wrog::rysuj(sf::RenderWindow &window) const
 
 const sf::RectangleShape &Wrog::pobierzKsztalt() const
 {
-    return ksztalt; // Zwracamy referencję
+    return ksztalt; // zwracana jest referencja
 }
 
 void Wrog::ustawPozycje(float x, float y)
@@ -255,7 +283,7 @@ int Wrog::pobierzPunkty()
     return wartoscPunktow;
 }
 
-int Wrog::pobierzTyp()
+int Wrog::pobierzTyp() const
 {
     return typ;
 }
@@ -265,10 +293,8 @@ bool Wrog::stracZycie()
     if (zycia > 1)
     {
         zycia--;
-        std::cout << "odejmuje zycie  Zycia: " << zycia << std::endl;
         return true;
     }
-    std::cout << "Zwracam false\n";
 
     return false;
 }
@@ -286,19 +312,24 @@ Pocisk::Pocisk(float x, float y, float kierunek) : predkosc(300.f), kierunek(kie
     // jezeli kierunek < 0 to magenta, w innym przypadku yellow
     ksztalt.setFillColor(kierunek < 0 ? sf::Color::Magenta : sf::Color::Yellow);
     ksztalt.setPosition(x, y);
+    ksztalt.setOutlineThickness(1);
+    ksztalt.setOutlineColor(sf::Color::Black);
 }
 
 Pocisk::Pocisk(float x, float y, float kierunek, sf::Color kolor, int typWroga) : predkosc(300.f), kierunek(kierunek)
 {
     ksztalt.setSize(sf::Vector2f(5, 10));
-    ksztalt.setFillColor(kolor); // ustawienie koloru pocsiku kolor pocisku
+    ksztalt.setFillColor(kolor); // ustawienie koloru pocisku 
     ksztalt.setPosition(x, y);
     obrazenia = 1;
+    ksztalt.setOutlineThickness(1);
+    ksztalt.setOutlineColor(sf::Color::Black);
+    //dla bosas wieksze obrazenia
     if (typWroga == 4)
         obrazenia = 2;
 }
 
-// ruch pocisków
+// ruch pociskow
 void Pocisk::ruszaj(float deltaTime)
 {
     ksztalt.move(0, kierunek * predkosc * deltaTime);
@@ -329,6 +360,7 @@ Ranking::Ranking(const std::string &nazwaPliku, const sf::Font &czcionka) : nazw
 void Ranking::dodajWynik(const std::string &nazwaGracza, int punkty)
 {
     wyniki.push_back({nazwaGracza, punkty});
+    //sortowanie malejaco
     std::sort(wyniki.begin(), wyniki.end(), [](const auto &a, const auto &b)
               { return a.second > b.second; });
     if (wyniki.size() > 10) // max 10 wynikow
@@ -341,11 +373,12 @@ void Ranking::dodajWynik(const std::string &nazwaGracza, int punkty)
 void Ranking::zaladuj()
 {
     wyniki.clear();
-    std::ifstream plik(nazwaPliku);
+    std::ifstream plik(nazwaPliku); //otwarcie pliku doo odczytu
     if (plik.is_open())
     {
         std::string nazwaGracza;
         int punkty;
+        // plik czytany linia po linii, para string-int
         while (plik >> nazwaGracza >> punkty)
         {
             wyniki.push_back({nazwaGracza, punkty});
@@ -356,7 +389,7 @@ void Ranking::zaladuj()
 
 void Ranking::zapisz()
 {
-    std::ofstream plik(nazwaPliku);
+    std::ofstream plik(nazwaPliku);  //otwarcie pliku do zapisu
     if (plik.is_open())
     {
         for (const auto &wynik : wyniki)
@@ -373,13 +406,15 @@ void Ranking::rysuj(sf::RenderWindow &window)
     int poz = 1;
     for (const auto &wynik : wyniki)
     {
-        tekst += std::to_string(poz) + ". " + wynik.first + ": " + std::to_string(wynik.second) + "\n";
+        tekst += std::to_string(poz) + ". " + wynik.first + "  :   " + std::to_string(wynik.second) + " pkt\n";
         poz++;
     }
     tekstRanking.setFont(czcionka);
     tekstRanking.setString(tekst);
-    tekstRanking.setCharacterSize(30);
+    tekstRanking.setCharacterSize(35);
     tekstRanking.setFillColor(sf::Color::White);
+    tekstRanking.setOutlineThickness(3);
+    tekstRanking.setOutlineColor(sf::Color::Black);
     tekstRanking.setPosition(100, 100);
     window.draw(tekstRanking);
 }
@@ -425,7 +460,7 @@ UstawTekst::UstawTekst(sf::Font &czcionka, sf::Vector2f rozmiar, sf::Vector2f po
     tekst.setFillColor(sf::Color::Cyan);
 
     tlo.setSize(rozmiar);
-    tlo.setFillColor(sf::Color(50, 50, 50, 200));
+    tlo.setFillColor(sf::Color(50, 50, 50, 200)); //kolor szary
     tlo.setOutlineColor(sf::Color::White);
     tlo.setOutlineThickness(2);
     tlo.setPosition(pozycja);
@@ -435,7 +470,7 @@ UstawTekst::UstawTekst(sf::Font &czcionka, sf::Vector2f rozmiar, sf::Vector2f po
 void UstawTekst::wysrodkujTekst()
 {
     sf::FloatRect granice = tekst.getLocalBounds();
-    tekst.setOrigin(granice.width / 2, 0);
+    tekst.setOrigin(granice.width / 2, 0); //poczatkowy punkt transformacji
     tekst.setPosition(tlo.getPosition().x + tlo.getSize().x / 2, tlo.getPosition().y + tlo.getSize().y / 2 - 20);
 }
 
@@ -449,10 +484,10 @@ void UstawTekst::pobierzZnak(sf::RenderWindow &window)
             window.close();
         }
 
-        // Wprowadzanie znaków przez użytkownika
+        // wprowadzanie znakow przez użytkownika
         if (event.type == sf::Event::TextEntered)
         {
-            if (event.text.unicode == '\b') // Backspace
+            if (event.text.unicode == '\b') // backspace
             {
                 if (!wejscie.empty())
                 {
@@ -461,11 +496,11 @@ void UstawTekst::pobierzZnak(sf::RenderWindow &window)
             }
             else if (event.text.unicode >= 32 && event.text.unicode < 128 && wejscie.size() < 15)
             {
-                // Ignoruj niewidzialne znaki poniżej 32 (np. tabulatory, nowa linia)
+                // ignoruj niewidzialne znaki ponizej 32
                 wejscie += static_cast<char>(event.text.unicode);
             }
 
-            // Aktualizacja wyświetlanego tekstu
+            // aktualizacja wyswietlanego tekstu
             tekst.setString(wejscie);
             wysrodkujTekst();
         }
@@ -494,10 +529,6 @@ std::string UstawTekst::pobierzWejscie() const
     return wejscie;
 }
 
-// bool UstawTekst::czyPusteWejscie()
-// {
-//     return wejscie.empty();
-// }
 
 /////////////////// USTAWIENIA ///////////////////////
 
@@ -524,8 +555,8 @@ Ustawienia::Ustawienia(const sf::Font &czcionka, Zasoby &zasoby)
     instrukcja.setFont(czcionka);
     instrukcja.setCharacterSize(32);
     instrukcja.setFillColor(sf::Color::White);
-    instrukcja.setString("uzyj strzalek lewo/prawo, aby zmienic tlo. Enter, aby zatwierdzic");
-    instrukcja.setPosition((960.f - instrukcja.getLocalBounds().width) / 2, 520);
+    instrukcja.setString("uzyj strzalek lewo/prawo, aby zmienic tlo.\n\n            wcisnij Enter, aby zatwierdzic");
+    instrukcja.setPosition((960.f - instrukcja.getLocalBounds().width) / 2, 480);
 
     // konfiguracja strzalek - nieregularny ksztalt
     strzalkaLewa.setPointCount(7);                       // strzalka zlozona z 7pkt
@@ -559,15 +590,15 @@ void Ustawienia::rysuj(sf::RenderWindow &window)
     if (wybranaOpcja > 0)
         strzalkaLewa.setFillColor(sf::Color::Red);
     else
-        strzalkaLewa.setFillColor(sf::Color(128, 128, 128)); //kolor szary
+        strzalkaLewa.setFillColor(sf::Color(128, 128, 128)); // kolor szary
 
-    //tak samo jak wyzej
+    // tak samo jak wyzej
     if (wybranaOpcja < 3)
         strzalkaPrawa.setFillColor(sf::Color::Red);
     else
         strzalkaPrawa.setFillColor(sf::Color(128, 128, 128));
 
-    //rysowanie elementow
+    // rysowanie elementow
     window.draw(wybraneTlo);
     window.draw(ramka);
     window.draw(instrukcja);
@@ -577,7 +608,7 @@ void Ustawienia::rysuj(sf::RenderWindow &window)
 
 void Ustawienia::przesunWLewo()
 {
-    //wykonuje sie jesli wybrana opcja wieksza od 0
+    // wykonuje sie jesli wybrana opcja wieksza od 0
     if (wybranaOpcja > 0)
     {
         wybranaOpcja--;
@@ -603,7 +634,7 @@ void Ustawienia::przesunWLewo()
     wybraneTlo.setScale(
         ramka.getSize().x / wybraneTlo.getTexture()->getSize().x,
         ramka.getSize().y / wybraneTlo.getTexture()->getSize().y);
-        // -> poniewaz getTexture() zwraca wskaznik sf::Texture*
+    // -> poniewaz getTexture() zwraca wskaznik sf::Texture*
 }
 
 void Ustawienia::przesunWPrawo()
@@ -613,9 +644,9 @@ void Ustawienia::przesunWPrawo()
         wybranaOpcja++;
         switch (wybranaOpcja)
         {
-        //pominiete case 0, bo nie mozliwosci przejcia do 0 dodajac 1
+        // pominiete case 0, bo nie mozliwosci przejcia do 0 dodajac 1
         case 1:
-            wybraneTlo.setTexture(zasoby.teksturaTlo2); //zmiana tla na wybrane
+            wybraneTlo.setTexture(zasoby.teksturaTlo2); // zmiana tla na wybrane
             break;
         case 2:
             wybraneTlo.setTexture(zasoby.teksturaTlo3);
