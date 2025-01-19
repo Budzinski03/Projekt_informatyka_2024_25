@@ -41,7 +41,7 @@ float kierunek = 1.0f;     // predkosc wrogow w poziomie
 float interwalRuchu = 3.f; // wrogowie przesuwani co 3s
 float czasOdOstatniegoRuchu = 0.0f;
 float czasOdOstatniegoStrzalu = 0.f;
-float minimalnyCzasStrzalu = 1.f;
+float minimalnyCzasStrzalu = 0.8f;
 float czasOdOstatniegoStrzaluWroga = 0.f;
 float minimalnyCzasStrzaluWroga = 1.0f;
 
@@ -118,7 +118,7 @@ bool zaladuj(Zasoby &zasoby)
 // funkcja do zapisu stanu gry do pliku
 void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std::vector<Wrog> &wrogowie, const std::vector<Oslona> &oslony)
 {
-    FILE *fp = fopen(nazwaPliku.c_str(), "wb");
+    FILE *fp = fopen(nazwaPliku.c_str(), "wb"); // otwiera plik, c_str konwertuje na const char*, wb - zapis binarny
     if (!fp)
     {
         std::cout << "Nie mozna otworzyc pliku do zapisu stanu gry!" << std::endl;
@@ -127,7 +127,7 @@ void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std:
 
     // zapis stanu gracza
     StanGracza stanGracza = {gracz.pobierzPozycje().x, gracz.pobierzPozycje().y, gracz.pobierzLiczbeZyc(), gracz.pobierzPunkty()};
-    fwrite(&stanGracza, sizeof(StanGracza), 1, fp);
+    fwrite(&stanGracza, sizeof(StanGracza), 1, fp); // kolejno zmienna, romzmiar, liczba elementow do zapisania oraz wskaznik do pliku
 
     // zapis zmiennych globalnych
     fwrite(&aktualnyPoziom, sizeof(int), 1, fp);
@@ -139,9 +139,9 @@ void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std:
     fwrite(&kierunek, sizeof(float), 1, fp);
     fwrite(&interwalRuchu, sizeof(float), 1, fp);
 
-    //zapis stanu oslon
+    // zapis stanu oslon
     int liczbaOslon = oslony.size();
-    fwrite(&liczbaOslon, sizeof(int), 1, fp);
+    fwrite(&liczbaOslon, sizeof(int), 1, fp); // zapisanie ilosci oslon
     for (const auto &oslona : oslony)
     {
         StanOslon stanOslon = {oslona.pobierzKsztalt().getPosition().x, oslona.pobierzKsztalt().getPosition().y, oslona.pobierzZycia()};
@@ -163,7 +163,7 @@ void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std:
 // funkcja do odczytu stanu gry
 bool odczytajStanGry(const std::string &nazwaPliku, Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Oslona> &oslony)
 {
-    FILE *fp = fopen(nazwaPliku.c_str(), "rb");
+    FILE *fp = fopen(nazwaPliku.c_str(), "rb"); // otwarcie do odczytu
     if (!fp)
     {
         std::cout << "Nie mozna otworzyc pliku do odczytu stanu gry!" << std::endl;
@@ -219,7 +219,7 @@ bool odczytajStanGry(const std::string &nazwaPliku, Gracz &gracz, std::vector<Wr
 // funckja do usuwania pliku
 void usunStanGry(const std::string &nazwaPliku)
 {
-    if (std::remove(nazwaPliku.c_str()) != 0)
+    if (std::remove(nazwaPliku.c_str()) != 0) // jezeli plik zostal usuniety to zwraca 0
     {
         std::cout << "Nie mozna usunac pliku stanu gry!" << std::endl;
     }
@@ -373,6 +373,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
                 zmienKierunek = true;
                 break;
             }
+            // niszczenie oslon gdy dotra tam wrogowie
             if (wrog.pobierzKsztalt().getPosition().y >= 430)
             {
                 oslony.clear();
@@ -428,7 +429,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
 
         bool pociskZniszczony = false;
 
-        // sprawdzenie kolizji pocisku z oslonami
+        // sprawdzenie kolizji pocisku gracza z oslonami
         for (auto oslonaIt = oslony.begin(); oslonaIt != oslony.end();)
         {
             if (pociskIt->pobierzObszar().intersects(sf::FloatRect(oslonaIt->pobierzKsztalt().getPosition(), oslonaIt->pobierzKsztalt().getSize())))
@@ -523,7 +524,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
 
         bool pociskZniszczony = false;
 
-        // sprawdzenie kolizji miedzy pociskami a oslonami
+        // sprawdzenie kolizji miedzy pociskami wroga a oslonami
         for (auto oslonaIt = oslony.begin(); oslonaIt != oslony.end();)
         {
             if (pociskIt->pobierzObszar().intersects(sf::FloatRect(oslonaIt->pobierzKsztalt().getPosition(), oslonaIt->pobierzKsztalt().getSize())))
@@ -606,7 +607,7 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &usta
                 aktualnyPoziom = 1;
                 kierunek = 1;
                 interwalRuchu = 3.f;
-                minimalnyCzasStrzalu = 1.f;
+                minimalnyCzasStrzalu = 0.8f;
                 minimalnyCzasStrzaluWroga = 1.f;
                 kolumny = 7;
                 wiersze = 3;
@@ -668,7 +669,7 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &usta
 void zwiekszPoziom(Gracz &gracz)
 {
     aktualnyPoziom++;
-    interwalRuchu -= 0.2f;             // zmniejszenie interwalu ruchu wrogow
+    interwalRuchu -= 0.1f;             // zmniejszenie interwalu ruchu wrogow
     minimalnyCzasStrzalu -= 0.2f;      // zmniejszenei minimalnego strzalu
     minimalnyCzasStrzaluWroga -= 0.2f; // zmniejszenie minimalnego strzalu
     kolumny += 1;
@@ -679,8 +680,8 @@ void zwiekszPoziom(Gracz &gracz)
         minimalnyCzasStrzalu = 0.2f; // minimalny czas strzalu
     if (minimalnyCzasStrzaluWroga < 0.5f)
         minimalnyCzasStrzaluWroga = 0.5f; // minimalny czas strzalu wroga
-    if (kolumny > 11)
-        kolumny = 11;
+    if (kolumny > 10)
+        kolumny = 10;
     if (wiersze > 5)
         wiersze = 5;
 
@@ -738,16 +739,6 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
         float y = 470.f;
         int zycia = 10 * aktualnyPoziom;
         oslony.emplace_back(x, y, zycia);
-    }
-}
-
-void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, std::vector<Oslona> &oslony)
-{
-    if (wrogowie.empty())
-    {
-        gracz.dodajZycie(aktualnyPoziom, zasoby.teksturaSerca);
-        zwiekszPoziom(gracz);
-        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga, oslony);
     }
 }
 
@@ -858,10 +849,17 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty,
             aktualizujPociski(pociskiGracza, pociskiWroga, deltaTime, gracz, wrogowie, oslony);
             // sterowanie graczem
             gracz.steruj(deltaTime);
-            sprawdzPoziom(gracz, wrogowie, pociskiGracza, pociskiWroga, oslony);
+
+            //jezeli wszyscy wrogowie zniszczeni to nowy poziom
+            if (wrogowie.empty())
+            {
+                gracz.dodajZycie(aktualnyPoziom, zasoby.teksturaSerca);
+                zwiekszPoziom(gracz);
+                resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga, oslony);
+            }
         }
 
-        // Rysowanie
+        // rysowanie
         window.clear();
         window.draw(ramka);
         window.draw(zasoby.tlo);
