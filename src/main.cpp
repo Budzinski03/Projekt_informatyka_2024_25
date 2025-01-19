@@ -40,7 +40,7 @@ int zyciaBossa = 4; // zycia bossa ladowane sa jako zycia bossa+aktualnyPoziom
 float kierunek = 1.0f;     // predkosc wrogow w poziomie
 float interwalRuchu = 3.f; // wrogowie przesuwani co 3s
 float czasOdOstatniegoRuchu = 0.0f;
-float czasOdOstatniegoStrzalu = 1.5f;
+float czasOdOstatniegoStrzalu = 0.f;
 float minimalnyCzasStrzalu = 1.f;
 float czasOdOstatniegoStrzaluWroga = 0.f;
 float minimalnyCzasStrzaluWroga = 1.0f;
@@ -57,6 +57,13 @@ struct StanGracza
     float y;    // pozycja y
     int zycia;  // liczba żyć gracza
     int punkty; // punkty gracza
+};
+
+struct StanOslon
+{
+    float x;
+    float y;
+    int zycia;
 };
 
 struct StanWroga
@@ -109,7 +116,7 @@ bool zaladuj(Zasoby &zasoby)
 }
 
 // funkcja do zapisu stanu gry do pliku
-void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std::vector<Wrog> &wrogowie)
+void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std::vector<Wrog> &wrogowie, const std::vector<Oslona> &oslony)
 {
     FILE *fp = fopen(nazwaPliku.c_str(), "wb");
     if (!fp)
@@ -131,9 +138,19 @@ void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std:
     fwrite(&zmienKierunek, sizeof(bool), 1, fp);
     fwrite(&kierunek, sizeof(float), 1, fp);
     fwrite(&interwalRuchu, sizeof(float), 1, fp);
-    fwrite(&zasoby.tlo, sizeof(sf::Sprite), 1, fp);
 
-    // zapis stanu wrogów
+    //zapis stanu oslon
+    int liczbaOslon = oslony.size();
+    fwrite(&liczbaOslon, sizeof(int), 1, fp);
+    for (const auto &oslona : oslony)
+    {
+        StanOslon stanOslon = {oslona.pobierzKsztalt().getPosition().x, oslona.pobierzKsztalt().getPosition().y, oslona.pobierzZycia()};
+        fwrite(&stanOslon, sizeof(StanOslon), 1, fp);
+    }
+
+    // Zapis stanu wrogów
+    int liczbaWrogow = wrogowie.size();
+    fwrite(&liczbaWrogow, sizeof(int), 1, fp);
     for (const auto &wrog : wrogowie)
     {
         StanWroga stanWroga = {wrog.pobierzKsztalt().getPosition().x, wrog.pobierzKsztalt().getPosition().y, wrog.pobierzTyp(), wrog.pobierzZycia()};
@@ -144,7 +161,7 @@ void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std:
 }
 
 // funkcja do odczytu stanu gry
-bool odczytajStanGry(const std::string &nazwaPliku, Gracz &gracz, std::vector<Wrog> &wrogowie)
+bool odczytajStanGry(const std::string &nazwaPliku, Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Oslona> &oslony)
 {
     FILE *fp = fopen(nazwaPliku.c_str(), "rb");
     if (!fp)
@@ -169,17 +186,33 @@ bool odczytajStanGry(const std::string &nazwaPliku, Gracz &gracz, std::vector<Wr
     fread(&zmienKierunek, sizeof(bool), 1, fp);
     fread(&kierunek, sizeof(float), 1, fp);
     fread(&interwalRuchu, sizeof(float), 1, fp);
-    fread(&zasoby.tlo, sizeof(sf::Sprite), 1, fp);
 
-    // odczyt stanu wrogów
-    StanWroga stanWroga;
-    while (fread(&stanWroga, sizeof(StanWroga), 1, fp) == 1)
+    // odczyt stanu oslon
+    int liczbaOslon;
+    fread(&liczbaOslon, sizeof(int), 1, fp);
+    oslony.clear();
+    for (int i = 0; i < liczbaOslon; i++)
     {
+        StanOslon stanOslon;
+        fread(&stanOslon, sizeof(StanOslon), 1, fp);
+        Oslona oslona(stanOslon.x, stanOslon.y, stanOslon.zycia);
+        oslony.push_back(oslona);
+    }
+
+    // odczyt stanu wrogow
+    int liczbaWrogow;
+    fread(&liczbaWrogow, sizeof(int), 1, fp);
+    wrogowie.clear();
+    for (int i = 0; i < liczbaWrogow; i++)
+    {
+        StanWroga stanWroga;
+        fread(&stanWroga, sizeof(StanWroga), 1, fp);
         Wrog wrog(stanWroga.x, stanWroga.y, stanWroga.typ, stanWroga.zycia);
         wrogowie.push_back(wrog);
     }
+
     fclose(fp);
-    
+
     return true;
 }
 
@@ -315,7 +348,7 @@ void wyswietlRanking(sf::RenderWindow &window, StanGry &stan, Ranking &ranking)
     window.display();
 }
 
-void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przesunietoPredzej)
+void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przesunietoPredzej, std::vector<Oslona> &oslony)
 {
     // ruch wrogow co okreslony czas
     if (czasOdOstatniegoRuchu >= interwalRuchu)
@@ -339,6 +372,10 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
             {
                 zmienKierunek = true;
                 break;
+            }
+            if (wrog.pobierzKsztalt().getPosition().y >= 430)
+            {
+                oslony.clear();
             }
             // jezeli dotrtarl do dolu koniec gry
             if (wrog.pobierzKsztalt().getPosition().y + wrog.pobierzKsztalt().getSize().y >= 530)
@@ -382,7 +419,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
     }
 }
 
-void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, float &deltaTime, Gracz &gracz, std::vector<Wrog> &wrogowie)
+void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, float &deltaTime, Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Oslona> &oslony)
 {
     // aktualizacja pociskow gracz, kolizja oraz wyjscie poza okno
     for (auto pociskIt = pociskiGracza.begin(); pociskIt != pociskiGracza.end();) // pociskIt to iterator
@@ -390,6 +427,26 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
         pociskIt->ruszaj(deltaTime); // ruch posisku
 
         bool pociskZniszczony = false;
+
+        // sprawdzenie kolizji pocisku z oslonami
+        for (auto oslonaIt = oslony.begin(); oslonaIt != oslony.end();)
+        {
+            if (pociskIt->pobierzObszar().intersects(sf::FloatRect(oslonaIt->pobierzKsztalt().getPosition(), oslonaIt->pobierzKsztalt().getSize())))
+            {
+                pociskIt = pociskiGracza.erase(pociskIt);
+                pociskZniszczony = true;
+                break; // wychodzimy z petli oslony, poniewaz pocisk zostal juz usuniety
+            }
+            else
+            {
+                ++oslonaIt;
+            }
+        }
+
+        if (pociskZniszczony)
+        {
+            continue; // przechodzimy do kolejnego pocisku gracza
+        }
 
         for (auto wrogIt = wrogowie.begin(); wrogIt != wrogowie.end();)
         {
@@ -434,7 +491,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
     if (czasOdOstatniegoStrzaluWroga >= minimalnyCzasStrzaluWroga && !wrogowie.empty())
     {
         int iloscWrogow = wrogowie.size();
-        for (int i = 0; i < iloscWrogow / 10 + 2; i++)
+        for (int i = 0; i < iloscWrogow / 14 + 1; i++) // 12 + 2
         {
             int indeksWroga = rand() % wrogowie.size();
             if (!wrogowie[indeksWroga].czyStrzelil)
@@ -459,16 +516,49 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
     }
 
     // aktualizaja pociskow wrogow
+
     for (auto pociskIt = pociskiWroga.begin(); pociskIt != pociskiWroga.end();)
     {
         pociskIt->ruszaj(deltaTime);
+
+        bool pociskZniszczony = false;
+
+        // sprawdzenie kolizji miedzy pociskami a oslonami
+        for (auto oslonaIt = oslony.begin(); oslonaIt != oslony.end();)
+        {
+            if (pociskIt->pobierzObszar().intersects(sf::FloatRect(oslonaIt->pobierzKsztalt().getPosition(), oslonaIt->pobierzKsztalt().getSize())))
+            {
+                if (!oslonaIt->stracZycie())
+                {
+                    // jesli kolizja to wrog jest niszczony
+                    oslonaIt = oslony.erase(oslonaIt);
+                }
+                else
+                {
+                    ++oslonaIt;
+                }
+                // po kolizji pocisk jest niszczony
+                pociskIt = pociskiWroga.erase(pociskIt);
+                pociskZniszczony = true;
+                break;
+            }
+            else
+            {
+                ++oslonaIt;
+            }
+        }
+
+        if (pociskZniszczony)
+        {
+            continue; // przechodzimy do kolejnego pocisku wroga
+        }
 
         // sprawdzenie kolizji miedzy pociskami a graczem
         if (pociskIt->pobierzObszar().intersects(sf::FloatRect(gracz.pobierzPozycje(), gracz.pobierzRozmiar())))
         {
             // jezeli pocisk trafi to gracz traci zycie, w zaleznosci od obrazen pocisku
-            bool zycia = gracz.stracZycie(pociskIt->pobierzObrazenia()); //
-            pociskIt = pociskiWroga.erase(pociskIt);                     // niszczenie pocisku po trafieniu
+            bool zycia = gracz.stracZycie(pociskIt->pobierzObrazenia());
+            pociskIt = pociskiWroga.erase(pociskIt); // niszczenie pocisku po trafieniu
 
             if (!zycia)
             {
@@ -488,13 +578,13 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
     }
 }
 
-bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, Gracz &gracz, std::vector<Pocisk> &pociskiGracza, std::vector<Wrog> wrogowie)
+bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &ustawTekst, Ranking &ranking, bool &graWstrzymana, StanGry stan, Gracz &gracz, std::vector<Pocisk> &pociskiGracza, std::vector<Wrog> &wrogowie, std::vector<Oslona> &oslony)
 {
     while (window.pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
         {
-            zapiszStanGry("stan_gry.dat", gracz, wrogowie); // zapisanie stanu gry przy zamknieciu okna
+            zapiszStanGry("stan_gry.dat", gracz, wrogowie, oslony); // zapisanie stanu gry przy zamknieciu okna
             window.close();
         }
         // obsluga przyciskow gdy gra jest aktywna
@@ -514,11 +604,12 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &usta
 
                 // przy nowej grze zerowanie parametrow
                 aktualnyPoziom = 1;
+                kierunek = 1;
+                interwalRuchu = 3.f;
                 minimalnyCzasStrzalu = 1.f;
                 minimalnyCzasStrzaluWroga = 1.f;
                 kolumny = 7;
                 wiersze = 3;
-                kierunek = 1;
                 return false;
             }
         }
@@ -544,7 +635,7 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &usta
                 if (event.key.code == sf::Keyboard::T)
                 {
                     wyjscieAktywne = false;
-                    zapiszStanGry("stan_gry.dat", gracz, wrogowie);
+                    zapiszStanGry("stan_gry.dat", gracz, wrogowie, oslony);
                     return false;
                 }
                 // wznowienie gry
@@ -596,12 +687,13 @@ void zwiekszPoziom(Gracz &gracz)
     gracz.dodajPunkty(aktualnyPoziom * 100); // bonusowe punkty za poziom
 }
 
-void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga)
+void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, std::vector<Oslona> &oslony)
 {
     gracz.resetuj();  // powrot do pierwotnej pozycji
     wrogowie.clear(); // czyszczenie wektorow by ponownie zaladowac
     pociskiGracza.clear();
     pociskiWroga.clear();
+    oslony.clear();
     kierunek = 1.0f; // zerowanie kierunku, aby wrogowie przesuwali sie w prawo
 
     // jesli jest boss to przenosi reszte wrogow w dol o pozycjaBossaY
@@ -638,15 +730,24 @@ void resetujGre(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &
         wrogowie.emplace_back((x1 + x2) / 2 - 130.f / 2, 80.f, 4, zyciaBossa + aktualnyPoziom);
     }
     pozycjaBossaY = 0.f;
+
+    // tworzenie oslon
+    for (int i = 0; i < 4; ++i)
+    {
+        float x = i * (104.f + 100.f) + 124.f;
+        float y = 470.f;
+        int zycia = 10 * aktualnyPoziom;
+        oslony.emplace_back(x, y, zycia);
+    }
 }
 
-void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga)
+void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &pociskiWroga, std::vector<Oslona> &oslony)
 {
     if (wrogowie.empty())
     {
         gracz.dodajZycie(aktualnyPoziom, zasoby.teksturaSerca);
         zwiekszPoziom(gracz);
-        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga);
+        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga, oslony);
     }
 }
 
@@ -674,6 +775,7 @@ void czyNowaGra(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty)
                     kolumny = 7;
                     wiersze = 3;
                     kierunek = 1;
+                    interwalRuchu = 3;
                     stan = StanGry::GRA;
                     return;
                 }
@@ -690,29 +792,31 @@ void czyNowaGra(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty)
         window.display();
     }
 }
+
 void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty, Ranking &ranking)
 {
     Gracz gracz(zasoby.teksturaSerca);
     std::vector<Wrog> wrogowie;
     std::vector<Pocisk> pociskiGracza;
     std::vector<Pocisk> pociskiWroga;
+    std::vector<Oslona> oslony;
     UstawTekst ustawTekst(zasoby.czcionka, sf::Vector2f(400, 50), sf::Vector2f(280, 400)); // dodanie obiektu do wpisywania tekstu
 
     // sprawdzanie czy plik istnieje i odczytanie stanu
-    if (!odczytajStanGry("stan_gry.dat", gracz, wrogowie))
+    if (!odczytajStanGry("stan_gry.dat", gracz, wrogowie, oslony))
     {
-        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga);
+        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga, oslony);
     }
 
     sf::Clock zegar;
     bool przesunietoPredzej = false;
 
     sf::RectangleShape zaciemnienie(sf::Vector2f(window.getSize().x, window.getSize().y));
-    zaciemnienie.setFillColor(sf::Color(0, 0, 0, 200)); // czarny, przezroczystosc 150
+    zaciemnienie.setFillColor(sf::Color(0, 0, 0, 200)); // czarny, przezroczystosc 200
 
     // Tworzenie ramki
     sf::RectangleShape ramka;
-    ramka.setSize(sf::Vector2f(window.getSize().x - 40.f, window.getSize().y - 40.f)); // rozmiar o 20 px mniej niz okno
+    ramka.setSize(sf::Vector2f(window.getSize().x - 40.f, window.getSize().y - 40.f)); // rozmiar o 40 px mniej niz okno
     ramka.setFillColor(sf::Color::Transparent);                                        // wypelnienie prostokata przezroczyste
     ramka.setOutlineThickness(20);                                                     // grubosc obramowania prostokąta
     ramka.setOutlineColor(sf::Color(255, 0, 0, 120));                                  // kolor obramowania - czerwony z przycemnieniem
@@ -738,7 +842,7 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty,
 
         sf::Event event;
         // jesli zwroci false, koniec gry, i okno do wpisania nicku
-        if (!obslugaZdarzen(window, event, ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza, wrogowie))
+        if (!obslugaZdarzen(window, event, ustawTekst, ranking, graWstrzymana, stan, gracz, pociskiGracza, wrogowie, oslony))
         {
             // reset stanu gry, powrot do menu
             koniecGry = false;
@@ -750,11 +854,11 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty,
         // logika obiektow
         if (!graWstrzymana)
         {
-            przesunWrogow(wrogowie, zmienKierunek, przesunietoPredzej);
-            aktualizujPociski(pociskiGracza, pociskiWroga, deltaTime, gracz, wrogowie);
+            przesunWrogow(wrogowie, zmienKierunek, przesunietoPredzej, oslony);
+            aktualizujPociski(pociskiGracza, pociskiWroga, deltaTime, gracz, wrogowie, oslony);
             // sterowanie graczem
             gracz.steruj(deltaTime);
-            sprawdzPoziom(gracz, wrogowie, pociskiGracza, pociskiWroga);
+            sprawdzPoziom(gracz, wrogowie, pociskiGracza, pociskiWroga, oslony);
         }
 
         // Rysowanie
@@ -774,7 +878,11 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty,
         {
             pocisk.rysuj(window);
         }
-        
+        for (auto &oslona : oslony)
+        {
+            oslona.rysuj(window);
+        }
+
         komunikaty.F1.rysuj(window);
         gracz.rysuj(window, zasoby.czcionka);
 
@@ -839,7 +947,7 @@ int main()
     komunikaty.F1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
     komunikaty.F1.ustawPozycje(((window.getSize().x - komunikaty.F1.pobierzTekst().getLocalBounds().width) / 2), 15.f);
 
-    komunikaty.czyNowaGra.ustawTekst("    czy chcesz kontynuuowac\npoprzednia rozrywke? [T/N]", sf::Color::White, sf::Color::Black);
+    komunikaty.czyNowaGra.ustawTekst("  czy chcesz kontynuuowac\npoprzednia rozrywke? [T/N]", sf::Color::White, sf::Color::Black);
     komunikaty.czyNowaGra.ustawPozycje(((window.getSize().x - komunikaty.czyNowaGra.pobierzTekst().getLocalBounds().width) / 2), window.getSize().y / 3);
 
     while (window.isOpen())

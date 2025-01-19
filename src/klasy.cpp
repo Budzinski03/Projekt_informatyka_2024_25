@@ -668,3 +668,63 @@ int Ustawienia::pobierzWybranaOpcje() const
 {
     return wybranaOpcja;
 }
+
+
+////////////////// OSLONA //////////////////////
+
+Oslona::Oslona(float x, float y, int zycia) : zycia(zycia)
+{
+    ksztalt.setSize(sf::Vector2f(100.f, 40.f));
+    ksztalt.setPosition(x, y);
+    ksztalt.setFillColor(sf::Color::White);
+}
+
+void Oslona::rysuj(sf::RenderWindow &window)
+{
+    if (zycia >= 10)
+    {
+        ksztalt.setFillColor(sf::Color::White);
+    }
+    if (zycia < 10 && zycia > 6)
+    {
+        ksztalt.setFillColor(sf::Color(255, 192, 203));
+    }
+    if (zycia <=6  && zycia > 1)
+    {   
+        ksztalt.setFillColor(sf::Color(255, 128, 64));
+    }
+    if (zycia == 1)
+    {
+        ksztalt.setFillColor(sf::Color(139, 0, 0));
+    }
+    window.draw(ksztalt);
+}
+
+const sf::RectangleShape &Oslona::pobierzKsztalt() const
+{
+    return ksztalt;
+}
+
+
+void Oslona::ustawPozycje(float x, float y)
+{
+    ksztalt.setPosition(x, y);
+}
+
+
+
+bool Oslona::stracZycie()
+{
+    if (zycia > 1)
+    {
+        zycia--;
+        return true;
+    }
+
+    return false;
+}
+
+int Oslona::pobierzZycia() const
+{
+    return zycia;
+}

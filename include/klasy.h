@@ -181,3 +181,21 @@ private:
     sf::ConvexShape strzalkaLewa;
     sf::ConvexShape strzalkaPrawa;
 };
+
+////////////////// OSLONA //////////////////////
+
+class Oslona
+{
+    public:
+    Oslona(float x, float y, int zycia);
+    void rysuj(sf::RenderWindow &window);
+    const sf::RectangleShape &pobierzKsztalt() const;
+    void ustawPozycje(float x, float y);
+    bool stracZycie();
+    int pobierzZycia() const;
+
+
+    private:
+    int zycia;
+    sf::RectangleShape ksztalt;
+};
