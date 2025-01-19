@@ -51,22 +51,21 @@ int wiersze = 3;
 float odstepK = 80.f;
 float odstepW = 40.f;
 
-// Struktura przechowująca stan bytu (gracza lub wroga)
-typedef struct
+struct StanGracza
 {
-    float x;                   // pozycja x
-    float y;                   // pozycja y
-    int typ;                   // typ wroga (dla gracza będzie -1)
-    bool aktywny;              // czy jest aktywny (dla gracza będzie zawsze true)
-    float kierunek;            // kierunek ruchu
-    int zycia;                 // liczba zyc gracza
-    int punkty;                // punkty gracza
-    bool zmienKierunek;        // zmienna zmienKierunek
-    float interwalRuchu = 3.f; // wrogowie przesuwani co 3s
-    float czasOdOstatniegoStrzalu = 1.5f;
-    float minimalnyCzasStrzalu = 1.2f;
-    float minimalnyCzasStrzaluWroga = 1.0f;
-} StanRozgrywki;
+    float x;    // pozycja x
+    float y;    // pozycja y
+    int zycia;  // liczba żyć gracza
+    int punkty; // punkty gracza
+};
+
+struct StanWroga
+{
+    float x; // pozycja x
+    float y; // pozycja y
+    int typ; // typ wroga
+    int zycia;
+};
 
 // ladowanie czcionki i tekstury
 bool zaladuj(Zasoby &zasoby)
@@ -120,18 +119,27 @@ void zapiszStanGry(const std::string &nazwaPliku, const Gracz &gracz, const std:
     }
 
     // zapis stanu gracza
-    StanRozgrywki stanGracza = {gracz.pobierzPozycje().x, gracz.pobierzPozycje().y, -1, true, kierunek, gracz.pobierzLiczbeZyc(), gracz.pobierzPunkty(), zmienKierunek, interwalRuchu, czasOdOstatniegoStrzalu, minimalnyCzasStrzalu, minimalnyCzasStrzaluWroga};
-    fwrite(&stanGracza, sizeof(StanRozgrywki), 1, fp);
+    StanGracza stanGracza = {gracz.pobierzPozycje().x, gracz.pobierzPozycje().y, gracz.pobierzLiczbeZyc(), gracz.pobierzPunkty()};
+    fwrite(&stanGracza, sizeof(StanGracza), 1, fp);
 
-    // zapis stanu wrogow
+    // zapis zmiennych globalnych
+    fwrite(&aktualnyPoziom, sizeof(int), 1, fp);
+    fwrite(&kolumny, sizeof(int), 1, fp);
+    fwrite(&wiersze, sizeof(int), 1, fp);
+    fwrite(&minimalnyCzasStrzalu, sizeof(float), 1, fp);
+    fwrite(&minimalnyCzasStrzaluWroga, sizeof(float), 1, fp);
+    fwrite(&zmienKierunek, sizeof(bool), 1, fp);
+    fwrite(&kierunek, sizeof(float), 1, fp);
+    fwrite(&interwalRuchu, sizeof(float), 1, fp);
+    fwrite(&zasoby.tlo, sizeof(sf::Sprite), 1, fp);
+
+    // zapis stanu wrogów
     for (const auto &wrog : wrogowie)
     {
-        StanRozgrywki stanWroga = {wrog.pobierzKsztalt().getPosition().x, wrog.pobierzKsztalt().getPosition().y, wrog.pobierzTyp(), true, 0, 0, 0, false, 0, 0, 0, 0};
-        fwrite(&stanWroga, sizeof(StanRozgrywki), 1, fp);
+        StanWroga stanWroga = {wrog.pobierzKsztalt().getPosition().x, wrog.pobierzKsztalt().getPosition().y, wrog.pobierzTyp(), wrog.pobierzZycia()};
+        fwrite(&stanWroga, sizeof(StanWroga), 1, fp);
     }
 
-    // zapis aktualnego poziomu
-    fwrite(&aktualnyPoziom, sizeof(int), 1, fp);
     fclose(fp);
 }
 
@@ -146,32 +154,32 @@ bool odczytajStanGry(const std::string &nazwaPliku, Gracz &gracz, std::vector<Wr
     }
 
     // odczyt stanu gracza
-    StanRozgrywki stanGracza;
-    fread(&stanGracza, sizeof(StanRozgrywki), 1, fp);
+    StanGracza stanGracza;
+    fread(&stanGracza, sizeof(StanGracza), 1, fp);
     gracz.ustawPozycje(stanGracza.x, stanGracza.y);
     gracz.ustawZycia(stanGracza.zycia, zasoby.teksturaSerca);
     gracz.ustawPunkty(stanGracza.punkty);
-    kierunek = stanGracza.kierunek;
-    zmienKierunek = stanGracza.zmienKierunek;
-    interwalRuchu = stanGracza.interwalRuchu;
-    czasOdOstatniegoStrzalu = stanGracza.czasOdOstatniegoStrzalu;
-    minimalnyCzasStrzalu = stanGracza.minimalnyCzasStrzalu;
-    minimalnyCzasStrzaluWroga = stanGracza.minimalnyCzasStrzaluWroga;
 
-    // odczyt stanu wrogow
-    wrogowie.clear();
-    StanRozgrywki stanWroga;
-    while (fread(&stanWroga, sizeof(StanRozgrywki), 1, fp) == 1)
+    // odczyt zmiennych globalnych
+    fread(&aktualnyPoziom, sizeof(int), 1, fp);
+    fread(&kolumny, sizeof(int), 1, fp);
+    fread(&wiersze, sizeof(int), 1, fp);
+    fread(&minimalnyCzasStrzalu, sizeof(float), 1, fp);
+    fread(&minimalnyCzasStrzaluWroga, sizeof(float), 1, fp);
+    fread(&zmienKierunek, sizeof(bool), 1, fp);
+    fread(&kierunek, sizeof(float), 1, fp);
+    fread(&interwalRuchu, sizeof(float), 1, fp);
+    fread(&zasoby.tlo, sizeof(sf::Sprite), 1, fp);
+
+    // odczyt stanu wrogów
+    StanWroga stanWroga;
+    while (fread(&stanWroga, sizeof(StanWroga), 1, fp) == 1)
     {
-        if (stanWroga.typ == -1)
-            break;
-        Wrog wrog(stanWroga.x, stanWroga.y, stanWroga.typ);
+        Wrog wrog(stanWroga.x, stanWroga.y, stanWroga.typ, stanWroga.zycia);
         wrogowie.push_back(wrog);
     }
-
-    // odczyt poziomu
-    fread(&aktualnyPoziom, sizeof(int), 1, fp);
     fclose(fp);
+    
     return true;
 }
 
@@ -368,6 +376,7 @@ void przesunWrogow(std::vector<Wrog> &wrogowie, bool &zmienKierunek, bool &przes
                 czasOdOstatniegoRuchu = 0.f;
             }
         }
+
         // reset czasu ruchu
         czasOdOstatniegoRuchu = 0.0f;
     }
@@ -410,7 +419,7 @@ void aktualizujPociski(std::vector<Pocisk> &pociskiGracza, std::vector<Pocisk> &
         // usuwanie pociskow po zderzeniu lub ktore wyszly poza zakres
         if (!pociskZniszczony)
         {
-            if (pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 0)
+            if (pociskIt->pobierzObszar().top + pociskIt->pobierzObszar().height < 20)
             {
                 pociskIt = pociskiGracza.erase(pociskIt);
             }
@@ -502,6 +511,14 @@ bool obslugaZdarzen(sf::RenderWindow &window, sf::Event &event, UstawTekst &usta
 
                 // usuniecie pliku stanu gry po przegranej
                 usunStanGry("stan_gry.dat");
+
+                // przy nowej grze zerowanie parametrow
+                aktualnyPoziom = 1;
+                minimalnyCzasStrzalu = 1.f;
+                minimalnyCzasStrzaluWroga = 1.f;
+                kolumny = 7;
+                wiersze = 3;
+                kierunek = 1;
                 return false;
             }
         }
@@ -627,9 +644,9 @@ void sprawdzPoziom(Gracz &gracz, std::vector<Wrog> &wrogowie, std::vector<Pocisk
 {
     if (wrogowie.empty())
     {
-        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga);
         gracz.dodajZycie(aktualnyPoziom, zasoby.teksturaSerca);
         zwiekszPoziom(gracz);
+        resetujGre(gracz, wrogowie, pociskiGracza, pociskiWroga);
     }
 }
 
@@ -651,10 +668,12 @@ void czyNowaGra(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty)
                     usunStanGry("stan_gry.dat");
 
                     // przy nowej grze zerowanie parametrow
+                    aktualnyPoziom = 1;
                     minimalnyCzasStrzalu = 1.f;
                     minimalnyCzasStrzaluWroga = 1.f;
                     kolumny = 7;
                     wiersze = 3;
+                    kierunek = 1;
                     stan = StanGry::GRA;
                     return;
                 }
@@ -740,11 +759,9 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty,
 
         // Rysowanie
         window.clear();
-        window.draw(zasoby.tlo);
         window.draw(ramka);
+        window.draw(zasoby.tlo);
         window.draw(linia, 2, sf::Lines);
-        gracz.rysuj(window, zasoby.czcionka);
-        komunikaty.F1.rysuj(window);
         for (const auto &wrog : wrogowie)
         {
             wrog.rysuj(window);
@@ -757,6 +774,10 @@ void uruchomGre(sf::RenderWindow &window, StanGry &stan, Komunikaty &komunikaty,
         {
             pocisk.rysuj(window);
         }
+        
+        komunikaty.F1.rysuj(window);
+        gracz.rysuj(window, zasoby.czcionka);
+
         if (pomocAktywna)
         {
             window.draw(zaciemnienie);
@@ -782,8 +803,7 @@ int main()
 {
     zaladuj(zasoby);
 
-    
-    //poczatkowy stan gry
+    // poczatkowy stan gry
     StanGry stan = MENU;
 
     sf::RenderWindow window(sf::VideoMode(960, 600), "Space invaders");
@@ -815,7 +835,6 @@ int main()
 
     komunikaty.wyjscie.ustawTekst("Czy na pewno chcesz wyjsc? (T/N)", sf::Color::White, sf::Color::Black);
     komunikaty.wyjscie.ustawPozycje(((window.getSize().x - komunikaty.wyjscie.pobierzTekst().getLocalBounds().width) / 2), window.getSize().y / 3);
-    std::cout<<komunikaty.F1.pobierzTekst().getCharacterSize();
 
     komunikaty.F1.ustawTekst("F1 - pomoc", sf::Color::Cyan, sf::Color::Black);
     komunikaty.F1.ustawPozycje(((window.getSize().x - komunikaty.F1.pobierzTekst().getLocalBounds().width) / 2), 15.f);
@@ -823,15 +842,11 @@ int main()
     komunikaty.czyNowaGra.ustawTekst("    czy chcesz kontynuuowac\npoprzednia rozrywke? [T/N]", sf::Color::White, sf::Color::Black);
     komunikaty.czyNowaGra.ustawPozycje(((window.getSize().x - komunikaty.czyNowaGra.pobierzTekst().getLocalBounds().width) / 2), window.getSize().y / 3);
 
-
-
-
     while (window.isOpen())
     {
         switch (stan)
         {
         case MENU:
-            aktualnyPoziom = 1;
             wyswietlMenu(window, stan, menu);
             break;
         case RANKING:

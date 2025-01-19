@@ -3,8 +3,8 @@ kacper 5610
 hubert 5410
 andrzej 2820
 tomasz 2600
+kozak 2375
 jansuz 2045
 pawel 1550
 mariusz 1295
-kuba 60
-piotr 25
+main 970

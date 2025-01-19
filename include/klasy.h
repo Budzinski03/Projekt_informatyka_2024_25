@@ -77,7 +77,7 @@ public:
     bool czyStrzelil; // flaga informujaca czy wrog strzeli, zapobiegniecie podwojnym strzalom
     int pobierzTyp() const;
     bool stracZycie();
-    int pobierzZycia();
+    int pobierzZycia() const;
 
 private:
     sf::RectangleShape ksztalt;

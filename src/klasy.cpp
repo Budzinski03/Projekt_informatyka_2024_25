@@ -90,13 +90,13 @@ void Gracz::steruj(float deltaTime)
         ksztalt.move(predkosc * deltaTime, 0);
 
     // ograniczenie ruchu w oknie
-    if (ksztalt.getPosition().x < 0)
+    if (ksztalt.getPosition().x < 20)
     {
-        ksztalt.setPosition(0, ksztalt.getPosition().y);
+        ksztalt.setPosition(20, ksztalt.getPosition().y);
     }
-    if (ksztalt.getPosition().x > 910)
+    if (ksztalt.getPosition().x + ksztalt.getSize().x > 940)
     {
-        ksztalt.setPosition(910, ksztalt.getPosition().y);
+        ksztalt.setPosition(940 - ksztalt.getSize().x, ksztalt.getPosition().y);
     }
 }
 
@@ -299,7 +299,7 @@ bool Wrog::stracZycie()
     return false;
 }
 
-int Wrog::pobierzZycia()
+int Wrog::pobierzZycia() const
 {
     return zycia;
 }
